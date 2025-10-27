@@ -9,5 +9,18 @@ Abacus listens to 2 names:
 When the keyword name is recognized, it will then start listening to your words, and based on what you said, it will execute it!
 It calculates with the words you said to form a proper command, and then executes this command. It's easier said than done.
 
+Abacus will learn from you depending on the way you talk, and what he recognizes
+
 ## Permissions
 As dangerous as it sounds, Abacus DOES need terminal permissions. It needs to access more than a normal user would be comfortable with. 
+
+
+## Settings
+When starting the application you have a small panel where you can decide Abacus' his actions. If you want a popup overlay sprite where his response is showed, then turn that on in the settings!
+There are a couple settings available:
+- Show / Hide sprites
+- Voice responses on/off
+- Text responses on/off
+- Default browser
+- Allow browser history access (he needs that for... experimental reasons)
+- Background listening (application is closed and abacus will ALWAYS listen to you, but wont execute anything until his name is called)
