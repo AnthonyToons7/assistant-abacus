@@ -24,3 +24,11 @@ There are a couple settings available:
 - Default browser
 - Allow browser history access (he needs that for... experimental reasons)
 - Background listening (application is closed and abacus will ALWAYS listen to you, but wont execute anything until his name is called)
+
+## Commands for model installations
+```
+pip install pyautogui
+pip install pyaudio
+pip install SpeechRecognition
+pip install deepmultilingualpunctuation
+```

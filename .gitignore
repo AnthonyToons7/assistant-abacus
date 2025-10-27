@@ -1,0 +1,8 @@
+/videoLogs
+*/DebugHandler.py
+
+data/*
+!.gitignore
+
+brain/openedPrograms.txt
+__pycache__/
