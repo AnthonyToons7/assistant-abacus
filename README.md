@@ -1,5 +1,5 @@
 # Abacus
-'All Brains And Completely Unpredictable Shenanigans' or A.B.A.C.U.S., is an small A.I system made by me. I designed him to help with small tasks and make my life a little bit easier and more fun.
+'Absolutely Brutal And Completely Unhinged Sociopath' or A.B.A.C.U.S., is an small voice 'assistant' system made by me. I designed him to help with small tasks and make my life a little bit easier and more fun.
 
 ## How does Abacus work?
 Abacus listens to 2 names:
