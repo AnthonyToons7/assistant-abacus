@@ -32,3 +32,10 @@ pip install pyaudio
 pip install SpeechRecognition
 pip install deepmultilingualpunctuation
 ```
+
+
+# Log 27-10
+- Name change
+- Added better scraping and an extra section for executables for programs in the MS store
+- Splitted more functions to handlers to keep each functionality in it's own handler
+- Renamed brain to storage
