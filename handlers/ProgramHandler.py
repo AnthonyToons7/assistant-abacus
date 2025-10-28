@@ -25,7 +25,7 @@ def find_app(keyword):
                 print(file)
                 if file.lower().endswith(".exe") and keyword.lower() in file.lower():
                     path = os.path.join(root, file)
-                    print(f"Found {keyword} at {path}")
+                    # print(f"Found {keyword} at {path}")
                     save_app_by_keyword(keyword, path)
                     return path
 
@@ -65,7 +65,7 @@ def launch_program(identifier):
         if identifier.endswith("!App"):  # MS Store app
             subprocess.Popen(["explorer.exe", f"shell:AppsFolder\\{identifier}"])
         else: 
-            subprocess.Popen([identifier])
+            subprocess.Popen([identifier], creationflags=subprocess.CREATE_NO_WINDOW)
         return True
     except Exception as e:
         print(f"Error launching {identifier}: {e}")

@@ -6,3 +6,4 @@ data/*
 
 brain/openedPrograms.txt
 __pycache__/
+/venv/*

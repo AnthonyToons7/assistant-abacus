@@ -37,7 +37,9 @@ def main():
 
     with sr.Microphone() as source:
         try:
-            text = listen_and_recognize(source)
+            # text = listen_and_recognize(source)
+            # Default test message
+            text = 'Abacus, open notepad'
             # print("Input: [ ", model.restore_punctuation(text), " ]")
             analyze(text)
         except sr.UnknownValueError:
