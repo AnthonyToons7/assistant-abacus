@@ -5,10 +5,10 @@ import subprocess
 from handlers.StorageHandler import get_app_by_keyword, save_app_by_keyword
 
 def find_app(keyword):
-    # Step 1: Try brain cache
-    brain = get_app_by_keyword(keyword)
-    if brain:
-        return brain
+    # Step 1: Try storage cache
+    app_in_storage = get_app_by_keyword(keyword)
+    if app_in_storage:
+        return app_in_storage
 
 
     # Step 2: Try installed .exe

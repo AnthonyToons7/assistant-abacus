@@ -1,8 +1,9 @@
 import os
 import re
+import json
 
 def get_app_by_keyword(keyword):
-    path = "brain/openedPrograms.txt"
+    path = "data/openedPrograms.txt"
     if not os.path.exists(path):
         return None
     with open(path, "r") as file:
@@ -14,7 +15,7 @@ def get_app_by_keyword(keyword):
     return None
 
 def save_app_by_keyword(keyword, exePath):
-    path = "brain/openedPrograms.txt"
+    path = "data/openedPrograms.txt"
     os.makedirs(os.path.dirname(path), exist_ok=True)
     lines = []
     if os.path.exists(path):
@@ -23,3 +24,26 @@ def save_app_by_keyword(keyword, exePath):
     if not any(line.lower().startswith(f"{keyword.lower()}:") for line in lines):
         with open(path, "a") as file:
             file.write(f"{keyword}: {exePath}\n")
+
+def save_user_data(type_key, value):
+    path = '../data/user-data.json'
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+
+    if os.path.exists(path):
+        with open(path, "r") as file:
+            try:
+                data = json.load(file)
+            except json.JSONDecodeError:
+                data = {}
+    else:
+        data = {}
+        
+    data[type_key] = value
+    with open(path, "w") as file:
+        json.dump(data, file, indent=4)
+
+def main():
+    save_user_data('Browser', 'Google chrome')
+
+if __name__=="__main__":
+    main()

@@ -39,7 +39,7 @@ def main():
         try:
             # text = listen_and_recognize(source)
             # Default test message
-            text = 'Abacus, open notepad'
+            text = 'Abacus, open filezilla'
             # print("Input: [ ", model.restore_punctuation(text), " ]")
             analyze(text)
         except sr.UnknownValueError:

@@ -26,6 +26,7 @@ There are a couple settings available:
 - Background listening (application is closed and abacus will ALWAYS listen to you, but wont execute anything until his name is called)
 
 ## Commands for model installations
+When installing, use `venv\Scripts\activate`. These are the models you need installed into the project, so you don't need to install them globally.
 ```
 pip install pyautogui
 pip install pyaudio
