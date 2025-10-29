@@ -1,7 +1,7 @@
 import speech_recognition as sr
 import pyttsx3
 import re
-from StorageHandler import user
+from handlers.StorageHandler import user
 
 text_to_speech = pyttsx3.init()
 

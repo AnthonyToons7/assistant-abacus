@@ -92,7 +92,9 @@ def message_checklist(application):
     # messaging_platform = listen_and_recognize()
     # print(messaging_platform)
 
-    protocols = get_protocol('message_checklist')
+    protocols = get_protocol('message-checklist')
+
+    print(protocols)
 
     for protocol in protocols:
         print(protocol)
