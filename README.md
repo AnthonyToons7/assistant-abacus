@@ -29,11 +29,22 @@ There are a couple settings available:
 When installing, use `venv\Scripts\activate`. These are the models you need installed into the project, so you don't need to install them globally.
 ```
 pip install pyautogui
-pip install pyaudio
 pip install SpeechRecognition
 pip install deepmultilingualpunctuation
+pip install pyaudio
 ```
 
+## Structure
+This is made on 3 main bases: handlers, services and protocols
+
+### Handlers
+Handlers are the core of the project. Each handler has its own purpose of handling specific functions and exeutes them as intended. These handlers seperate the massive webbing of functions in the project.
+
+### Services
+Services are to provide data from internal or external sources. They get data, and they store data.
+
+### Protocols
+Protocols are simple tasks that are meant to be executed in a specific order. These protocols are saved in a JSON file, and are meant to follow specific scenarios.
 
 # Log 27-10
 - Name change

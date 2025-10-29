@@ -5,21 +5,20 @@ import sys
 import re
 from handlers.FilterHandler import filter
 from handlers.AudioHandler import listen_and_recognize
-# from deepmultilingualpunctuation import PunctuationModel
+import tkinter as tk
 
-# model = PunctuationModel()
-p = pyaudio.PyAudio()
-input_device_info = p.get_default_input_device_info()
+pyaudio_init = pyaudio.PyAudio()
+input_device_info = pyaudio_init.get_default_input_device_info()
 
 print("Microphone:", input_device_info["name"])
-p.terminate()
+pyaudio_init.terminate()
 
-recognized_names = ['Abacus', 'Ryui', 'Aba cus', 'Ryu i', 'Abe cus', 'Ryu yi']
+# Fallback in case pyaudio picks up the wrong name
+recognized_names = ['Abacus','Aba cus','Abe cus','Abakus','Abak us','Abacuss','Abakuss','Abacusss','Abakusss','Abakuz','Abacuz','Abacusz','Abaxus','Abaxuss','Abakos','Abakoss','Abacous','Abacoush','Abacush','Abacose','Abacosee','Abakose','Abakosee','Abakuzh','Abacuzh','Abacushh','Abakush','Abakushh','Abakusse','Abacusse','Abakuse','Abacuse','Abakusseh','Abacuseh','Abacushe','Abakushhe','Abakushh','Abacuzze','Abakuzze','Abacuzzeh','Abakuzzeh','Abakuzzehh','Abacuzzehh','Abacuzzeh','Abakuzzehh']
 recognized_names_pattern = "|".join(recognized_names)
 
 # TODO: save all audio executed to a folder named 'audio-logs'. Everytime Abacus is initiated, check for the audio logs, and remove them if they're older than a week
-def analyze(text):
-    # TODO: create a big filter function that filters out words that are like 'Abacus', and accept those too
+def analyze_user_audio(text):
     if(re.search(recognized_names_pattern, text, re.IGNORECASE)):
         suc = filter(text)
         if(suc is not None):
@@ -34,18 +33,12 @@ def analyze(text):
         print("Activation word not found in text.")
 
 def main():
-
-    with sr.Microphone() as source:
-        try:
-            # text = listen_and_recognize(source)
-            # Default test message
-            text = 'Abacus, open filezilla'
-            # print("Input: [ ", model.restore_punctuation(text), " ]")
-            analyze(text)
-        except sr.UnknownValueError:
-            print("Could not understand audio")
-        except sr.RequestError:
-            print("Could not request results")
+    # Default test message
+    text = 'Abacus, send a message'
+    
+    # text = listen_and_recognize()
+    print("Input: [ ", text, " ]")
+    analyze_user_audio(text)
 
 if __name__=="__main__":
     main()

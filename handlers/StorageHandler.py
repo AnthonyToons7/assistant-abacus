@@ -1,6 +1,10 @@
 import os
 import re
 import json
+import getpass
+global user
+
+user = getpass.getuser()
 
 def get_app_by_keyword(keyword):
     path = "data/openedPrograms.txt"

@@ -1,8 +1,4 @@
-import pyautogui
-import os
-import subprocess
-import re
-from handlers.ProgramHandler import open_program
+from handlers.ProgramHandler import open_program, message_checklist
 
 def filter(text):
     text = text.lower()
@@ -19,16 +15,30 @@ def filter(text):
     #  If the application is met, and the command is 'send', but no message has been added, restart listening sequence
     # After listening sequence save the sentence, and read it out with TTS
 
-    for activation_word in activation_commands:
-        if activation_word in text:
-            activation_word = activation_word
-            break 
+    text = text.split(' ')
+    application = ''
+    activation_word = ''
 
-    before_keyword, keyword, after_keyword = text.partition(activation_word)
+    for i, word in enumerate(text):
+        if word in activation_commands:
+            activation_word = text[i]
 
-    if activation_word == 'open':
-        if keyword == '':
-            return None
+            if activation_word == 'open':
+                if i + 1 < len(text):
+                    application = text[i + 1]
+                break
 
-        program = open_program(after_keyword.strip())
-        return 'Success!'
+        if activation_word == 'send' and word == 'on':
+            if i + 1 < len(text):
+                application = text[i + 1]
+            break
+
+    match activation_word:
+        case 'send':
+            message_checklist(application)
+        case 'open':
+            open_program(application)
+        case _:
+            return 'Empty'
+            
+    return 'Success!'
