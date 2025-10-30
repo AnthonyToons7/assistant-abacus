@@ -46,6 +46,10 @@ def save_user_data(type_key, value):
     with open(path, "w") as file:
         json.dump(data, file, indent=4)
 
+def scrape(default_browser):
+    # TODO: Scrape files for browsing history
+    print('asd')
+
 def main():
     save_user_data('Browser', 'Google chrome')
 

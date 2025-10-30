@@ -32,6 +32,9 @@ pip install pyautogui
 pip install SpeechRecognition
 pip install deepmultilingualpunctuation
 pip install pyaudio
+pip install pyttsx3
+pip install simpleaudio
+pip install pocketsphinx
 ```
 
 ## Structure

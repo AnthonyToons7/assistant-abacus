@@ -5,13 +5,6 @@ import sys
 import re
 from handlers.FilterHandler import filter
 from handlers.AudioHandler import listen_and_recognize
-import tkinter as tk
-
-pyaudio_init = pyaudio.PyAudio()
-input_device_info = pyaudio_init.get_default_input_device_info()
-
-print("Microphone:", input_device_info["name"])
-pyaudio_init.terminate()
 
 # Fallback in case pyaudio picks up the wrong name
 recognized_names = ['Abacus','Aba cus','Abe cus','Abakus','Abak us','Abacuss','Abakuss','Abacusss','Abakusss','Abakuz','Abacuz','Abacusz','Abaxus','Abaxuss','Abakos','Abakoss','Abacous','Abacoush','Abacush','Abacose','Abacosee','Abakose','Abakosee','Abakuzh','Abacuzh','Abacushh','Abakush','Abakushh','Abakusse','Abacusse','Abakuse','Abacuse','Abakusseh','Abacuseh','Abacushe','Abakushhe','Abakushh','Abacuzze','Abakuzze','Abacuzzeh','Abakuzzeh','Abakuzzehh','Abacuzzehh','Abacuzzeh','Abakuzzehh']
@@ -33,11 +26,15 @@ def analyze_user_audio(text):
         print("Activation word not found in text.")
 
 def main():
+    pyaudio_init = pyaudio.PyAudio()
+    input_device_info = pyaudio_init.get_default_input_device_info()
+    print("Microphone:", input_device_info["name"])
     # Default test message
     text = 'Abacus, send a message'
-    
-    # text = listen_and_recognize()
     print("Input: [ ", text, " ]")
+    
+    text = listen_and_recognize()
+    return
     analyze_user_audio(text)
 
 if __name__=="__main__":
