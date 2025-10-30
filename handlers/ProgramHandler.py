@@ -1,8 +1,9 @@
 import os
 import json
 import subprocess
+import time
 from handlers.StorageHandler import get_app_by_keyword, save_app_by_keyword
-from handlers.AudioHandler import listen_and_recognize
+from handlers.AudioHandler import listen_and_recognize, give_audio_response
 from services.ProtocolService import get_protocol 
 
 def find_app(keyword):
@@ -93,8 +94,34 @@ def message_checklist(application):
     # print(messaging_platform)
 
     protocols = get_protocol('message-checklist')
+    # mockup = {'application': 'Whatsapp','receiver': 'antho','message': 'Hey bro, can you turn on the lights?'}
+    message_data = {}
+    accepted_confirmations = ['Yes', 'Yeah', 'Correct', 'That\'s right', 'Affirmative', 'Yep']
 
-    print(protocols)
+    give_audio_response('Running checklist...')
 
-    for protocol in protocols:
-        print(protocol)
+    for key, value in protocols.items():
+        if 'voice_message_empty' in value:
+            give_audio_response(value['voice_message_empty'])
+            message_data[key] = listen_and_recognize() or ''
+            # message_data[key] = mockup[key]
+            give_audio_response(message_data[key])
+            time.sleep(1)
+
+    for key, value in protocols.items():
+        if 'voice_message' in value:
+            value['voice_message'] = value['voice_message'].replace(f'[{key}]', message_data[key])
+            give_audio_response(value['voice_message'])
+
+            user_answer = listen_and_recognize() or ''
+            
+            if user_answer not in accepted_confirmations:
+                give_audio_response(f'What would you like {message_data[key]} to be?')
+                message_data[key] = listen_and_recognize()
+
+                print(message_data[key])
+                give_audio_response('Noted.')
+
+            time.sleep(1)
+
+    give_audio_response('Sending message . . .')

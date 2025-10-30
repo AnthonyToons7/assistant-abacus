@@ -1,0 +1,14 @@
+{
+    "application": {
+        "voice_message": "You selected [application] as messaging platform, is that correct?",
+        "voice_message_empty": "On which platform would you like to send a message?"
+    },
+    "receiver": {
+        "voice_message": "You want to send a message to [receiver], is that correct?",
+        "voice_message_empty": "To who do you want to send a message?"
+    },
+    "message": {
+        "voice_message": "Your message is: '[message]'... is that correct?",
+        "voice_message_empty": "What will your message be?"
+    }
+}

@@ -1,7 +1,7 @@
 /videoLogs
 */DebugHandler.py
-data/*
 !.gitignore
 __pycache__/
 /venv/*
-brain/openedPrograms.txt
+data/openedPrograms.txt
+data/logs/*
