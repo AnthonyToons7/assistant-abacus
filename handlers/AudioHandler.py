@@ -18,7 +18,6 @@ class MicWindow:
         self.root.attributes("-topmost", True)
         self.root.protocol("WM_DELETE_WINDOW", self.disable_event)
 
-        # Mic image or fallback emoji
         if os.path.exists("mic.png"):
             img = Image.open("mic.png").resize((50, 50))
             self.photo = ImageTk.PhotoImage(img)
@@ -27,7 +26,6 @@ class MicWindow:
             self.label = tk.Label(self.root, text="🎤", font=("Arial", 24))
         self.label.pack()
 
-        # Bottom-right corner
         self.root.update_idletasks()
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
@@ -44,7 +42,6 @@ class MicWindow:
         self.root.destroy()
 
 def record_audio(mic_win):
-    # Record
     with sr.Microphone() as source:
         print("Calibrating...")
         recognizer.adjust_for_ambient_noise(source, duration=0.4)
@@ -52,14 +49,12 @@ def record_audio(mic_win):
         audio = recognizer.listen(source)
         print("Captured!")
 
-    # Save
     os.makedirs("data/audio-logs", exist_ok=True)
     file_path = f"data/audio-logs/test-{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}.wav"
     with open(file_path, "wb") as f:
         f.write(audio.get_wav_data())
     print(f"Audio saved to {file_path}")
 
-    # Recognize
     try:
         text = recognizer.recognize_google(audio)
         print("Recognized:", text)
@@ -67,7 +62,6 @@ def record_audio(mic_win):
         print("Recognition failed:", e)
         text = ""
 
-    # Hide mic GUI
     mic_win.hide()
     return text
 
@@ -162,9 +156,6 @@ def record_audio(window):
 def listen_and_recognize():
     root = tk.Tk()
     window = SpeakNowWindow(root)
-
-    # Start recording in a background thread
     threading.Thread(target=record_audio, args=(window,), daemon=True).start()
 
-    # Run Tkinter mainloop (blocks main thread)
     root.mainloop()

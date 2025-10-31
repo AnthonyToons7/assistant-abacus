@@ -33,8 +33,7 @@ def main():
     text = 'Abacus, send a message'
     print("Input: [ ", text, " ]")
     
-    text = listen_and_recognize()
-    return
+    # text = listen_and_recognize() or ''
     analyze_user_audio(text)
 
 if __name__=="__main__":

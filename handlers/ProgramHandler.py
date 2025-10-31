@@ -66,7 +66,7 @@ def launch_program(identifier):
         if identifier.endswith(".jpg") or identifier.endswith(".png"):
             print("Error: Image files cannot be launched as programs.")
             return False
-        if identifier.endswith("!App"):  # MS Store app
+        if identifier.endswith("!App"):
             subprocess.Popen(["explorer.exe", f"shell:AppsFolder\\{identifier}"])
         else: 
             subprocess.Popen([identifier], creationflags=subprocess.CREATE_NO_WINDOW)
@@ -83,18 +83,11 @@ def open_program(keyword):
     return launch_program(app)
 
 def message_checklist(application):
-    # TODO in data/protocols is a json that needs to be looped through
-    #  It contains the 3 important factors for sending a message: app, receiver and message
-    #  With each protocol, you check if there is data for that protocol. If there isn't, ask for data using listen_and_recognize()
-
-    # TODO: when confirming your selections for app, receiver and message, make a function in AudioHandler, that checks for 'Yes' and 'No',
-    #  returning True or False depending on the answer, then, use a ternary operator for decision making.
-    
     # messaging_platform = listen_and_recognize()
     # print(messaging_platform)
 
     protocols = get_protocol('message-checklist')
-    # mockup = {'application': 'Whatsapp','receiver': 'antho','message': 'Hey bro, can you turn on the lights?'}
+    mockup = {'application': 'Whatsapp','receiver': 'antho','message': 'Hey, what\'s up'}
     message_data = {}
     accepted_confirmations = ['Yes', 'Yeah', 'Correct', 'That\'s right', 'Affirmative', 'Yep']
 
@@ -103,8 +96,8 @@ def message_checklist(application):
     for key, value in protocols.items():
         if 'voice_message_empty' in value:
             give_audio_response(value['voice_message_empty'])
-            message_data[key] = listen_and_recognize() or ''
-            # message_data[key] = mockup[key]
+            # message_data[key] = listen_and_recognize() or 'Yes'
+            message_data[key] = mockup[key]
             give_audio_response(message_data[key])
             time.sleep(1)
 
@@ -113,7 +106,7 @@ def message_checklist(application):
             value['voice_message'] = value['voice_message'].replace(f'[{key}]', message_data[key])
             give_audio_response(value['voice_message'])
 
-            user_answer = listen_and_recognize() or ''
+            user_answer = listen_and_recognize() or 'Yes'
             
             if user_answer not in accepted_confirmations:
                 give_audio_response(f'What would you like {message_data[key]} to be?')
