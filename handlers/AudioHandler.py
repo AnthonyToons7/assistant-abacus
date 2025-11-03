@@ -8,38 +8,9 @@ import datetime
 import tkinter as tk
 from PIL import Image, ImageTk
 from handlers.StorageHandler import user
+from handlers.PopupHandler import Window, SpeakNowWindow
 
 recognizer = sr.Recognizer()
-
-class MicWindow:
-    def __init__(self, master):
-        self.root = master
-        self.root.overrideredirect(True)
-        self.root.attributes("-topmost", True)
-        self.root.protocol("WM_DELETE_WINDOW", self.disable_event)
-
-        if os.path.exists("mic.png"):
-            img = Image.open("mic.png").resize((50, 50))
-            self.photo = ImageTk.PhotoImage(img)
-            self.label = tk.Label(self.root, image=self.photo)
-        else:
-            self.label = tk.Label(self.root, text="🎤", font=("Arial", 24))
-        self.label.pack()
-
-        self.root.update_idletasks()
-        screen_width = self.root.winfo_screenwidth()
-        screen_height = self.root.winfo_screenheight()
-        width = self.root.winfo_width()
-        height = self.root.winfo_height()
-        x = screen_width - width - 20
-        y = screen_height - height - 50
-        self.root.geometry(f"+{x}+{y}")
-
-    def disable_event(self):
-        pass
-
-    def hide(self):
-        self.root.destroy()
 
 def record_audio(mic_win):
     with sr.Microphone() as source:
@@ -68,7 +39,7 @@ def record_audio(mic_win):
 def listen_and_recognize():
     # Tkinter root must be created in main thread
     root = tk.Tk()
-    mic_win = MicWindow()
+    mic_win = Window(root)
 
     # Start recording in a separate thread
     threading.Thread(target=record_audio, args=(mic_win,), daemon=True).start()
@@ -95,35 +66,6 @@ def save_audio_file(audio):
     os.makedirs("data/audio-logs", exist_ok=True)
     with open(f"data/audio-logs/test-{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}.wav", "wb") as f:
         f.write(audio.get_wav_data())
-
-
-class SpeakNowWindow:
-    def __init__(self, master):
-        self.root = master
-        self.root.overrideredirect(True)      # remove title bar
-        self.root.attributes("-topmost", True)  # always on top
-        self.root.protocol("WM_DELETE_WINDOW", self.disable_event)
-
-        # Display text
-        self.label = tk.Label(self.root, text="Speak now!", font=("Arial", 18), bg="yellow")
-        self.label.pack(padx=10, pady=5)
-
-        # Bottom-right corner
-        self.root.update_idletasks()
-        screen_width = self.root.winfo_screenwidth()
-        screen_height = self.root.winfo_screenheight()
-        width = self.root.winfo_width()
-        height = self.root.winfo_height()
-        x = screen_width - width - 20
-        y = screen_height - height - 50
-        self.root.geometry(f"+{x}+{y}")
-
-    def disable_event(self):
-        pass  # prevent closing manually
-
-    def hide(self):
-        self.root.destroy()
-
 
 def record_audio(window):
     # Record

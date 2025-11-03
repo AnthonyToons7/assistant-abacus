@@ -26,7 +26,7 @@ There are a couple settings available:
 - Background listening (application is closed and abacus will ALWAYS listen to you, but wont execute anything until his name is called)
 
 ## Commands for model installations
-When installing, use `venv\Scripts\activate`. These are the models you need installed into the project, so you don't need to install them globally.
+When installing, use `venv\Scripts\activate`. These are the models you need installed into the project, so you don't need to install them globally. This python project is built in a virtual environment.
 ```
 pip install pyautogui
 pip install SpeechRecognition
@@ -54,3 +54,7 @@ Protocols are simple tasks that are meant to be executed in a specific order. Th
 - Added better scraping and an extra section for executables for programs in the MS store
 - Splitted more functions to handlers to keep each functionality in it's own handler
 - Renamed brain to storage
+
+# Log 31-10
+- record/listen does not work when you play an adio que before it, resorted to text showing instead
+- TODO: Better visual indicator for indicating listener is listening

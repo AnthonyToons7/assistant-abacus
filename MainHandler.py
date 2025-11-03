@@ -3,8 +3,11 @@ import speech_recognition as sr
 import getpass
 import sys
 import re
+import time
+import tkinter as tk
 from handlers.FilterHandler import filter
 from handlers.AudioHandler import listen_and_recognize
+from handlers.PopupHandler import Window, SpeakNowWindow
 
 # Fallback in case pyaudio picks up the wrong name
 recognized_names = ['Abacus','Aba cus','Abe cus','Abakus','Abak us','Abacuss','Abakuss','Abacusss','Abakusss','Abakuz','Abacuz','Abacusz','Abaxus','Abaxuss','Abakos','Abakoss','Abacous','Abacoush','Abacush','Abacose','Abacosee','Abakose','Abakosee','Abakuzh','Abacuzh','Abacushh','Abakush','Abakushh','Abakusse','Abacusse','Abakuse','Abacuse','Abakusseh','Abacuseh','Abacushe','Abakushhe','Abakushh','Abacuzze','Abakuzze','Abacuzzeh','Abakuzzeh','Abakuzzehh','Abacuzzehh','Abacuzzeh','Abakuzzehh']
@@ -36,5 +39,12 @@ def main():
     # text = listen_and_recognize() or ''
     analyze_user_audio(text)
 
-if __name__=="__main__":
+if __name__ == "__main__":
+    # root = tk.Tk()
+    # window = Window(root)
+
+    # root.after(4000, window.hide)
+
+    # root.mainloop()
+
     main()

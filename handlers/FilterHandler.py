@@ -2,7 +2,7 @@ from handlers.ProgramHandler import open_program, message_checklist
 
 def filter(text):
     text = text.lower()
-    activation_commands = ['send', 'open']
+    activation_commands = ['send', 'open', 'fetch', 'settings']
     # availablePlatforms = ['discord', 'whatsapp', 'spotify']
 
     # TODO: make arrays with apps based off of what the commands are. for example:
