@@ -7,7 +7,7 @@ import time
 import tkinter as tk
 from handlers.FilterHandler import filter
 from handlers.AudioHandler import listen_and_recognize
-from handlers.PopupHandler import Window, SpeakNowWindow
+from handlers.PopupHandler import Window, SpeakNowWindow, TransparentOverlay
 
 # Fallback in case pyaudio picks up the wrong name
 recognized_names = ['Abacus','Aba cus','Abe cus','Abakus','Abak us','Abacuss','Abakuss','Abacusss','Abakusss','Abakuz','Abacuz','Abacusz','Abaxus','Abaxuss','Abakos','Abakoss','Abacous','Abacoush','Abacush','Abacose','Abacosee','Abakose','Abakosee','Abakuzh','Abacuzh','Abacushh','Abakush','Abakushh','Abakusse','Abacusse','Abakuse','Abacuse','Abakusseh','Abacuseh','Abacushe','Abakushhe','Abakushh','Abacuzze','Abakuzze','Abacuzzeh','Abakuzzeh','Abakuzzehh','Abacuzzehh','Abacuzzeh','Abakuzzehh']
@@ -32,19 +32,15 @@ def main():
     pyaudio_init = pyaudio.PyAudio()
     input_device_info = pyaudio_init.get_default_input_device_info()
     print("Microphone:", input_device_info["name"])
+    
     # Default test message
-    text = 'Abacus, send a message'
+    # text = 'Abacus, send a message'
+    
+    text = listen_and_recognize() or ''
     print("Input: [ ", text, " ]")
     
-    # text = listen_and_recognize() or ''
     analyze_user_audio(text)
 
+
 if __name__ == "__main__":
-    # root = tk.Tk()
-    # window = Window(root)
-
-    # root.after(4000, window.hide)
-
-    # root.mainloop()
-
     main()
