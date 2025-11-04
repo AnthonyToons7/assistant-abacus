@@ -36,6 +36,7 @@ pip install pyttsx3
 pip install simpleaudio
 pip install pocketsphinx
 pip install PyQt5
+pip install pywhatkit
 ```
 
 ## Structure

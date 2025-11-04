@@ -2,9 +2,14 @@ import os
 import json
 import subprocess
 import time
+import pyautogui
+import sys
+import os
 from handlers.StorageHandler import get_app_by_keyword, save_app_by_keyword
 from handlers.AudioHandler import listen_and_recognize, give_audio_response
-from services.ProtocolService import get_protocol 
+from services.ProtocolService import get_protocol
+from services.WhatsAppService import send_message as send_whatsapp
+from services.DiscordService import send_message as send_discord
 
 def find_app(keyword):
     # Step 1: Try storage cache
@@ -83,38 +88,47 @@ def open_program(keyword):
     return launch_program(app)
 
 def message_checklist(application):
-    # messaging_platform = listen_and_recognize()
-    # print(messaging_platform)
-
     protocols = get_protocol('message-checklist')
-    mockup = {'application': 'Whatsapp','receiver': 'antho','message': 'Hey, what\'s up'}
-    message_data = {}
+    mockup = {'application': 'whatsapp','receiver': 'anthony (jij)','message': 'asd'}
+    message_data = mockup
+    # message_data = {}
     accepted_confirmations = ['Yes', 'Yeah', 'Correct', 'That\'s right', 'Affirmative', 'Yep']
 
     give_audio_response('Running checklist...')
 
-    for key, value in protocols.items():
-        if 'voice_message_empty' in value:
-            give_audio_response(value['voice_message_empty'])
-            # message_data[key] = listen_and_recognize() or 'Yes'
-            message_data[key] = mockup[key]
-            give_audio_response(message_data[key])
-            time.sleep(1)
+    # for key, value in protocols.items():
+    #     if 'voice_message_empty' in value:
+    #         give_audio_response(value['voice_message_empty'])
+    #         message_data[key] = listen_and_recognize() or 'Yes'
 
-    for key, value in protocols.items():
-        if 'voice_message' in value:
-            value['voice_message'] = value['voice_message'].replace(f'[{key}]', message_data[key])
-            give_audio_response(value['voice_message'])
-
-            user_answer = listen_and_recognize() or 'Yes'
+    #         # message_data[key] = mockup[key]
             
-            if user_answer not in accepted_confirmations:
-                give_audio_response(f'What would you like {message_data[key]} to be?')
-                message_data[key] = listen_and_recognize()
+    #         give_audio_response(message_data[key])
+    #         time.sleep(0.5)
 
-                print(message_data[key])
-                give_audio_response('Noted.')
+    # for key, value in protocols.items():
+    #     if 'voice_message' in value:
+    #         value['voice_message'] = value['voice_message'].replace(f'[{key}]', message_data[key])
+    #         give_audio_response(value['voice_message'])
 
-            time.sleep(1)
+    #         user_answer = listen_and_recognize()
+            
+    #         if user_answer not in accepted_confirmations:
+    #             give_audio_response(f'What would you like {message_data[key]} to be?')
+    #             message_data[key] = listen_and_recognize()
+
+    #             print(message_data[key])
+    #             give_audio_response('Noted.')
+
+    #         time.sleep(0.5)
 
     give_audio_response('Sending message . . .')
+
+    open_program(message_data['application'])
+
+    application_mapping = {
+        "whatsapp": send_whatsapp,
+        "discord": send_discord,
+    }
+
+    application_mapping[message_data['application'].lower()](message_data['receiver'], message_data['message'])

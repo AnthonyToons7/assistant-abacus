@@ -32,7 +32,7 @@ def listen_and_recognize():
         overlay.show()
         app.processEvents() 
         print("Speak now!")
-        audio = recognizer.listen(source)
+        audio = recognizer.listen(source, 5, 5)
         print("Captured!") 
 
     QTimer.singleShot(1000, overlay.start_fade_out)
