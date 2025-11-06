@@ -60,3 +60,7 @@ Protocols are simple tasks that are meant to be executed in a specific order. Th
 # Log 31-10
 - record/listen does not work when you play an adio que before it, resorted to text showing instead
 - TODO: Better visual indicator for indicating listener is listening
+
+# Log 7-10
+- Made a seperate branch for phone-remote-control
+- Merged speaking border and cross platform messaging
