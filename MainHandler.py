@@ -5,6 +5,7 @@ import sys
 import re
 import time
 import tkinter as tk
+import pyremotecontrol
 from handlers.FilterHandler import filter
 from handlers.AudioHandler import listen_and_recognize
 from handlers.PopupHandler import Window, SpeakNowWindow
@@ -29,15 +30,16 @@ def analyze_user_audio(text):
         print("Activation word not found in text.")
 
 def main():
-    pyaudio_init = pyaudio.PyAudio()
-    input_device_info = pyaudio_init.get_default_input_device_info()
-    print("Microphone:", input_device_info["name"])
-    # Default test message
-    text = 'Abacus, send a message'
-    print("Input: [ ", text, " ]")
+    pyremotecontrol.start_server()
+    # pyaudio_init = pyaudio.PyAudio()
+    # input_device_info = pyaudio_init.get_default_input_device_info()
+    # print("Microphone:", input_device_info["name"])
+    # # Default test message
+    # text = 'Abacus, send a message'
+    # print("Input: [ ", text, " ]")
     
-    # text = listen_and_recognize() or ''
-    analyze_user_audio(text)
+    # # text = listen_and_recognize() or ''
+    # analyze_user_audio(text)
 
 if __name__ == "__main__":
     # root = tk.Tk()
