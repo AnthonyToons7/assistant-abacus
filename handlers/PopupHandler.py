@@ -1,50 +1,54 @@
 import os
 import tkinter as tk
-from PIL import Image, ImageTk
-import sys
+import signal
 import ctypes
-from PyQt5.QtWidgets import QApplication, QWidget, QGraphicsOpacityEffect
-from PyQt5.QtGui import QPainter, QPen, QColor
-from PyQt5.QtCore import Qt, QTimer, QPropertyAnimation
+from PyQt5.QtWidgets import QLabel, QApplication, QWidget, QGraphicsOpacityEffect
+from PyQt5.QtGui import QPainter, QPen, QColor, QPixmap
+from PyQt5.QtCore import Qt, QPropertyAnimation
 
+signal.signal(signal.SIGINT, signal.SIG_DFL) 
 
-class Window:
+class AbacusSprite(QLabel):
+    def __init__(self):
+        super().__init__()
+
+        pixmap = QPixmap("data/img/rock.png")
+        if pixmap.isNull():
+            print("Failed to load image!")
+            return
+
+        pixmap = pixmap.scaledToWidth(200)
+        pixmap = pixmap.scaledToHeight(100)
+        self.setPixmap(pixmap)
+
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+
+        screen_geometry = QApplication.primaryScreen().geometry()
+        self.move(screen_geometry.width() - pixmap.width() - 10,
+                  screen_geometry.height() - pixmap.height() - 100)
+
+        self.show()
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            print("Sprite clicked!")
+            self.openAnimation = QPropertyAnimation(self, "geometry")
+            self.openAnimation.setDuration(500)
+            self.openAnimation.setStartValue(QRect(parentPosition.x(), parentPosition.y(), parent.width(), parent.height()))
+            self.openAnimation.setEndValue(QRect(openX, openY, openWidth, openHeight))
+            self.openAnimation.setEasingCurve(QEasingCurve.InOutQuad)
+                    
+class SpeakNowWindow:
     def __init__(self, master):
         self.root = master
         self.root.overrideredirect(True)
         self.root.attributes("-topmost", True)
         self.root.protocol("WM_DELETE_WINDOW", self.disable_event)
 
-        self.label = tk.Label(self.root, text="Heyo", font=("Arial", 24))
-        self.label.pack()
-
-        self.root.update_idletasks()
-        screen_width = self.root.winfo_screenwidth()
-        screen_height = self.root.winfo_screenheight()
-        width = self.root.winfo_width()
-        height = self.root.winfo_height()
-        x = screen_width - width + 20
-        y = screen_height - height + 50
-        self.root.geometry(f"+{x}+{y}")
-
-    def disable_event(self):
-        pass
-
-    def hide(self):
-        self.root.destroy()
-
-class SpeakNowWindow:
-    def __init__(self, master):
-        self.root = master
-        self.root.overrideredirect(True)      # remove title bar
-        self.root.attributes("-topmost", True)  # always on top
-        self.root.protocol("WM_DELETE_WINDOW", self.disable_event)
-
-        # Display text
         self.label = tk.Label(self.root, text="Speak now!", font=("Arial", 18), bg="yellow")
         self.label.pack(padx=10, pady=5)
 
-        # Bottom-right corner
         self.root.update_idletasks()
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
@@ -55,7 +59,7 @@ class SpeakNowWindow:
         self.root.geometry(f"+{x}+{y}")
 
     def disable_event(self):
-        pass  # prevent closing manually
+        pass
 
     def hide(self):
         self.root.destroy()

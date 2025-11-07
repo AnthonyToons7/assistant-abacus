@@ -1,13 +1,10 @@
-import pyaudio
-import speech_recognition as sr
 import getpass
 import sys
 import re
-import time
-import tkinter as tk
 from handlers.FilterHandler import filter
 from handlers.AudioHandler import listen_and_recognize, give_audio_response
-from handlers.PopupHandler import Window, SpeakNowWindow, TransparentOverlay
+from handlers.PopupHandler import AbacusSprite
+from PyQt5.QtWidgets import QApplication
 
 # Fallback in case pyaudio picks up the wrong name
 recognized_names = ['Abacus','Aba cus','Abe cus','Abakus','Abak us','Abacuss','Abakuss','Abacusss','Abakusss','Abakuz','Abacuz','Abacusz','Abaxus','Abaxuss','Abakos','Abakoss','Abacous','Abacoush','Abacush','Abacose','Abacosee','Abakose','Abakosee','Abakuzh','Abacuzh','Abacushh','Abakush','Abakushh','Abakusse','Abacusse','Abakuse','Abacuse','Abakusseh','Abacuseh','Abacushe','Abakushhe','Abakushh','Abacuzze','Abakuzze','Abacuzzeh','Abakuzzeh','Abakuzzehh','Abacuzzehh','Abacuzzeh','Abakuzzehh']
@@ -26,16 +23,20 @@ def analyze_user_audio(text):
         give_audio_response("Sorry, I could not understand. Could you repeat that for me?")
 
 def main():
-    pyaudio_init = pyaudio.PyAudio()
-    input_device_info = pyaudio_init.get_default_input_device_info()
-    print("Microphone:", input_device_info["name"])
+    app = QApplication(sys.argv)
+    sprite = AbacusSprite()
+    print('huhuh')
+    sys.exit(app.exec_())
+    # pyaudio_init = pyaudio.PyAudio()
+    # input_device_info = pyaudio_init.get_default_input_device_info()
+    # print("Microphone:", input_device_info["name"])
     
-    # Default test message
-    text = 'Abacus, send a message on Whatsapp'
+    # # Default test message
+    # text = 'Abacus, send a message on Whatsapp'
     
-    # text = listen_and_recognize() or ''
-    print("Input: [ ", text, " ]")
-    analyze_user_audio(text)
+    # # text = listen_and_recognize() or ''
+    # print("Input: [ ", text, " ]")
+    # analyze_user_audio(text)
 
 if __name__ == "__main__":
     main()

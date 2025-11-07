@@ -6,10 +6,8 @@ import os
 import sys
 import simpleaudio as sa
 import datetime
-import tkinter as tk
-from PIL import Image, ImageTk
 from handlers.StorageHandler import user
-from handlers.PopupHandler import Window, SpeakNowWindow, TransparentOverlay
+from handlers.PopupHandler import SpeakNowWindow, TransparentOverlay
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import QApplication, QWidget
 
