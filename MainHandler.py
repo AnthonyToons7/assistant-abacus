@@ -25,7 +25,6 @@ def analyze_user_audio(text):
 def main():
     app = QApplication(sys.argv)
     sprite = AbacusSprite()
-    print('huhuh')
     sys.exit(app.exec_())
     # pyaudio_init = pyaudio.PyAudio()
     # input_device_info = pyaudio_init.get_default_input_device_info()

@@ -12,32 +12,41 @@ class AbacusSprite(QLabel):
     def __init__(self):
         super().__init__()
 
-        pixmap = QPixmap("data/img/rock.png")
-        if pixmap.isNull():
+        self.pixmap = QPixmap("data/img/rock2.png")
+        if self.pixmap.isNull():
             print("Failed to load image!")
             return
 
-        pixmap = pixmap.scaledToWidth(200)
-        pixmap = pixmap.scaledToHeight(100)
-        self.setPixmap(pixmap)
+        self.pixmap = self.pixmap.scaledToWidth(500)
+        self.pixmap = self.pixmap.scaledToHeight(400)
+        self.setPixmap(self.pixmap)
 
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
         self.setAttribute(Qt.WA_TranslucentBackground)
 
-        screen_geometry = QApplication.primaryScreen().geometry()
-        self.move(screen_geometry.width() - pixmap.width() - 10,
-                  screen_geometry.height() - pixmap.height() - 100)
+        self.screen_geometry = QApplication.primaryScreen().geometry()
+        self.move(self.screen_geometry.width() - self.pixmap.width() + 50,
+                  self.screen_geometry.height() - self.pixmap.height() - 20)
 
         self.show()
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             print("Sprite clicked!")
-            self.openAnimation = QPropertyAnimation(self, "geometry")
-            self.openAnimation.setDuration(500)
-            self.openAnimation.setStartValue(QRect(parentPosition.x(), parentPosition.y(), parent.width(), parent.height()))
-            self.openAnimation.setEndValue(QRect(openX, openY, openWidth, openHeight))
-            self.openAnimation.setEasingCurve(QEasingCurve.InOutQuad)
+            # self.openAnimation = QPropertyAnimation(self, "geometry")
+            # self.openAnimation.setDuration(500)
+            # self.openAnimation.setStartValue(QRect(parentPosition.x(), parentPosition.y(), parent.width(), parent.height()))
+            # self.openAnimation.setEndValue(QRect(openX, openY, openWidth, openHeight))
+            # self.openAnimation.setEasingCurve(QEasingCurve.InOutQuad)
+            pixmap = self.pixmap
+            pixmap = pixmap.scaledToWidth(300)
+            pixmap = pixmap.scaledToHeight(200)
+            
+            self.self.screen_geometry = QApplication.primaryScreen().geometry()
+            self.move(self.screen_geometry.width() - self.pixmap.width() - 10,
+                    self.screen_geometry.height() - self.pixmap.height() - 100)
+
+            self.setPixmap(pixmap)
                     
 class SpeakNowWindow:
     def __init__(self, master):
