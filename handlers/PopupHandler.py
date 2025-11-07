@@ -2,52 +2,107 @@ import os
 import tkinter as tk
 import signal
 import ctypes
+import json
+import random
 from PyQt5.QtWidgets import QLabel, QApplication, QWidget, QGraphicsOpacityEffect
-from PyQt5.QtGui import QPainter, QPen, QColor, QPixmap
-from PyQt5.QtCore import Qt, QPropertyAnimation
+from PyQt5.QtGui import QPainter, QPen, QColor, QPixmap, QFont, QRegion, QPainterPath, QBitmap
+from PyQt5.QtCore import Qt, QPropertyAnimation, QTimer
 
 signal.signal(signal.SIGINT, signal.SIG_DFL) 
 
 class AbacusSprite(QLabel):
     def __init__(self):
         super().__init__()
-
         self.pixmap = QPixmap("data/img/rock2.png")
         if self.pixmap.isNull():
             print("Failed to load image!")
             return
 
-        self.pixmap = self.pixmap.scaledToWidth(500)
-        self.pixmap = self.pixmap.scaledToHeight(400)
+        self.pixmap = self.pixmap.scaledToWidth(300)
+        self.pixmap = self.pixmap.scaledToHeight(200)
         self.setPixmap(self.pixmap)
 
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
-        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
         self.screen_geometry = QApplication.primaryScreen().geometry()
-        self.move(self.screen_geometry.width() - self.pixmap.width() + 50,
-                  self.screen_geometry.height() - self.pixmap.height() - 20)
-
+        self.move(self.screen_geometry.width() - self.pixmap.width() - 10, self.screen_geometry.height() - self.pixmap.height() - 20)
         self.show()
 
-    def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            print("Sprite clicked!")
-            # self.openAnimation = QPropertyAnimation(self, "geometry")
-            # self.openAnimation.setDuration(500)
-            # self.openAnimation.setStartValue(QRect(parentPosition.x(), parentPosition.y(), parent.width(), parent.height()))
-            # self.openAnimation.setEndValue(QRect(openX, openY, openWidth, openHeight))
-            # self.openAnimation.setEasingCurve(QEasingCurve.InOutQuad)
-            pixmap = self.pixmap
-            pixmap = pixmap.scaledToWidth(300)
-            pixmap = pixmap.scaledToHeight(200)
-            
-            self.self.screen_geometry = QApplication.primaryScreen().geometry()
-            self.move(self.screen_geometry.width() - self.pixmap.width() - 10,
-                    self.screen_geometry.height() - self.pixmap.height() - 100)
+        self.bubble = QLabel("", None)
+        self.bubble.setWindowFlags(Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
+        self.bubble.setStyleSheet("""
+            QLabel {
+                background-color: white;
+                border-radius: 10px;
+                padding: 5px;
+            }
+        """)
+        self.bubble.setFont(QFont("Arial", 12))
+        path = QPainterPath()
+        path.addRoundedRect(0, 0, self.bubble.width(), self.bubble.height(), 10, 10)
 
-            self.setPixmap(pixmap)
-                    
+        mask = QBitmap(self.bubble.size())
+        mask.fill(Qt.GlobalColor.color0)
+        painter = QPainter(mask)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.fillPath(path, Qt.GlobalColor.color1)
+        painter.end()
+
+        self.bubble.setMask(mask)
+
+        self.sentences = self.load_sentences("data/rock/rock.json")
+        if not self.sentences:
+            self.sentences = ["..."]
+
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.show_random_sentence)
+        self.timer.start(20000)
+        self.show_random_sentence()
+
+    def load_sentences(self, path):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if isinstance(data, list):
+                return data
+            print("rock.json format invalid — must be a list of strings.")
+            return []
+        except Exception as e:
+            print("Failed to load sentences:", e)
+            return []
+
+    def show_random_sentence(self):
+        sentence = random.choice(self.sentences)
+        self.bubble.setText(sentence)
+        self.bubble.adjustSize()
+
+        bubble_x = self.x() + (self.width() - self.bubble.width() - 30)
+        bubble_y = self.y() - self.bubble.height() - 10
+        self.bubble.move(bubble_x, bubble_y)
+        self.bubble.show()
+        self.bubble.raise_()
+
+        QTimer.singleShot(5000, self.bubble.hide)
+
+    # def mousePressEvent(self, event):
+    #     if event.button() == Qt.MouseButton.LeftButton:
+    #         print("Sprite clicked!")
+    #         pixmap = self.pixmap.scaledToWidth(300)
+    #         pixmap = pixmap.scaledToHeight(200)
+    #         self.setPixmap(pixmap)
+    #         self.screen_geometry = QApplication.primaryScreen().geometry()
+    #         self.move(self.screen_geometry.width() - pixmap.width() - 20,
+    #                   self.screen_geometry.height() - pixmap.height() - 100)
+    #         self.update_bubble_position()
+
+    def update_bubble_position(self):
+        if not self.bubble.isVisible():
+            return
+        bubble_x = self.x() + (self.width() - self.bubble.width()) // 2
+        bubble_y = self.y() - self.bubble.height() - 10
+        self.bubble.move(bubble_x, bubble_y)
+
 class SpeakNowWindow:
     def __init__(self, master):
         self.root = master
