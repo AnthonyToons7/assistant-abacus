@@ -48,7 +48,12 @@ def save_user_data(type_key, value):
 
 def scrape(default_browser):
     # TODO: Scrape files for browsing history
-    print('asd')
+    default_browser_directory = get_app_by_keyword(default_browser)
+
+    if(default_browser_directory is None):
+        print('Chat, we don\'t have a browser')
+
+    
 
 def main():
     save_user_data('Browser', 'Google chrome')

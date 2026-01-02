@@ -1,107 +1,238 @@
 import os
-import tkinter as tk
 import signal
-import ctypes
 import json
 import random
-from PyQt5.QtWidgets import QLabel, QApplication, QWidget, QGraphicsOpacityEffect
-from PyQt5.QtGui import QPainter, QPen, QColor, QPixmap, QFont, QRegion, QPainterPath, QBitmap
-from PyQt5.QtCore import Qt, QPropertyAnimation, QTimer
+import math
+from MainHandler import start
+from PyQt5.QtWidgets import QLabel, QApplication, QWidget, QOpenGLWidget
+from PyQt5.QtGui import QPixmap, QFont, QImage, QSurfaceFormat
+from PyQt5.QtCore import Qt, QTimer, QRect
+from OpenGL.GL import *
+from OpenGL.GLU import *
+import numpy as np
+import time 
 
-signal.signal(signal.SIGINT, signal.SIG_DFL) 
+signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+# TODO: cross support for abacus and the dumb rock
+#  Abacus will be a helpful assistant. The rock might be used one day for idk, something, I dont care.
 
 class AbacusSprite(QLabel):
-    def __init__(self):
+    def __init__(
+        self,
+        frame_count=8,
+        sheet_dir="data/img/Slime-sheet.png",
+        fps=10
+    ):
         super().__init__()
-        self.pixmap = QPixmap("data/img/rock2.png")
-        if self.pixmap.isNull():
-            print("Failed to load image!")
+
+        self.sheet = QPixmap(sheet_dir)
+        if self.sheet.isNull():
+            print("Failed to load sprite sheet!")
             return
 
-        self.pixmap = self.pixmap.scaledToWidth(300)
-        self.pixmap = self.pixmap.scaledToHeight(200)
-        self.setPixmap(self.pixmap)
+        self.frame_count = frame_count
+        self.current_frame = 0
 
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.frame_width = self.sheet.width() // frame_count
+        self.frame_height = self.sheet.height()
 
-        self.screen_geometry = QApplication.primaryScreen().geometry()
-        self.move(self.screen_geometry.width() - self.pixmap.width() - 10, self.screen_geometry.height() - self.pixmap.height() - 20)
-        self.show()
-
-        self.bubble = QLabel("", None)
-        self.bubble.setWindowFlags(Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
-        self.bubble.setStyleSheet("""
-            QLabel {
-                background-color: white;
-                border-radius: 10px;
-                padding: 5px;
-            }
-        """)
-        self.bubble.setFont(QFont("Arial", 12))
-        path = QPainterPath()
-        path.addRoundedRect(0, 0, self.bubble.width(), self.bubble.height(), 10, 10)
-
-        mask = QBitmap(self.bubble.size())
-        mask.fill(Qt.GlobalColor.color0)
-        painter = QPainter(mask)
-        painter.setRenderHint(QPainter.Antialiasing)
-        painter.fillPath(path, Qt.GlobalColor.color1)
-        painter.end()
-
-        self.bubble.setMask(mask)
-
-        self.sentences = self.load_sentences("data/rock/rock.json")
-        if not self.sentences:
-            self.sentences = ["..."]
+        self.display_width = 200
+        self.display_height = int(self.frame_height * (self.display_width / self.frame_width))
 
         self.timer = QTimer(self)
-        self.timer.timeout.connect(self.show_random_sentence)
-        self.timer.start(20000)
-        self.show_random_sentence()
+        self.timer.timeout.connect(self.next_frame)
+        self.timer.start(int(1000 / fps))
 
-    def load_sentences(self, path):
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            if isinstance(data, list):
-                return data
-            print("rock.json format invalid — must be a list of strings.")
-            return []
-        except Exception as e:
-            print("Failed to load sentences:", e)
-            return []
+        self.update_frame()
 
-    def show_random_sentence(self):
-        sentence = random.choice(self.sentences)
-        self.bubble.setText(sentence)
-        self.bubble.adjustSize()
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
+        self.setAttribute(Qt.WA_TranslucentBackground)
 
-        bubble_x = self.x() + (self.width() - self.bubble.width() - 30)
-        bubble_y = self.y() - self.bubble.height() - 10
-        self.bubble.move(bubble_x, bubble_y)
-        self.bubble.show()
-        self.bubble.raise_()
+        self.screen = QApplication.primaryScreen().geometry()
+        self.move(
+            self.screen.width() - self.display_width - 20,
+            self.screen.height() - self.display_height - 120
+        )
 
-        QTimer.singleShot(5000, self.bubble.hide)
+        self.show()
 
-    # def mousePressEvent(self, event):
-    #     if event.button() == Qt.MouseButton.LeftButton:
-    #         print("Sprite clicked!")
-    #         pixmap = self.pixmap.scaledToWidth(300)
-    #         pixmap = pixmap.scaledToHeight(200)
-    #         self.setPixmap(pixmap)
-    #         self.screen_geometry = QApplication.primaryScreen().geometry()
-    #         self.move(self.screen_geometry.width() - pixmap.width() - 20,
-    #                   self.screen_geometry.height() - pixmap.height() - 100)
-    #         self.update_bubble_position()
+    def next_frame(self):
+        self.current_frame = (self.current_frame + 1) % self.frame_count
+        self.update_frame()
 
-    def update_bubble_position(self):
-        if not self.bubble.isVisible():
-            return
-        bubble_x = self.x() + (self.width() - self.bubble.width()) // 2
-        bubble_y = self.y() - self.bubble.height() - 10
-        self.bubble.move(bubble_x, bubble_y)
+    def update_frame(self):
+        frame_rect = QRect(
+            self.current_frame * self.frame_width,
+            0,
+            self.frame_width,
+            self.frame_height
+        )
+
+        frame = self.sheet.copy(frame_rect)
+        frame = frame.scaled(
+            self.display_width,
+            self.display_height,
+            Qt.KeepAspectRatio,
+            Qt.SmoothTransformation
+        )
+        self.setPixmap(frame)
+        self.location = 0
+        self.direction = -1
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            print("Sprite clicked!")
+            start();
+
+            # self.move(
+            #     self.screen.width() - self.display_width - 20,
+            #     int(self.frame_height * (self.display_width / self.frame_width))
+            # )
+
+            # while True:
+            #     time.sleep(0.001)
+            #     self.location += self.direction
+
+            #     self.move(
+            #         self.screen.width() - self.display_width - self.location,
+            #         self.screen.height() - self.display_height - 120
+            #     )
+
+            #     if self.location >= 1000:
+            #         self.direction = -1
+            #     if self.location <= 0:
+            #         self.direction = 1
+
+
+# Uh, this is a 3D rock sprite, I guess?
+# class Rock3D(QOpenGLWidget):
+#     def __init__(self, image_path):
+#         super().__init__()
+#         fmt = QSurfaceFormat()
+#         fmt.setAlphaBufferSize(8)
+#         self.setFormat(fmt)
+#         self.setAttribute(Qt.WA_TranslucentBackground)
+#         self.setAttribute(Qt.WA_NoSystemBackground)
+#         self.angle = 0
+#         self.image_path = image_path
+#         self.texture = None
+#         self.timer = QTimer()
+#         self.timer.timeout.connect(self.update_angle)
+#         self.timer.start(20)
+
+#     def initializeGL(self):
+#         glEnable(GL_TEXTURE_2D)
+#         glClearColor(0.0, 0.0, 0.0, 0.0)
+#         glEnable(GL_BLEND)
+#         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+#         self.load_texture()
+
+#     def load_texture(self):
+#         image = QImage(self.image_path).convertToFormat(QImage.Format_RGBA8888)
+#         width, height = image.width(), image.height()
+#         ptr = image.bits()
+#         ptr.setsize(image.byteCount())
+#         arr = np.frombuffer(ptr, np.uint8)
+
+#         self.texture = glGenTextures(1)
+#         glBindTexture(GL_TEXTURE_2D, self.texture)
+#         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+#         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+#         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, arr)
+
+#     def paintEvent(self, event):
+#         self.makeCurrent()
+#         self.paintGL()
+#         self.doneCurrent()
+
+#     def paintGL(self):
+#         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+#         glLoadIdentity()
+
+#         glTranslatef(0.0, 0.0, -2.3)  # Move back a bit
+#         glRotatef(self.angle, 0.0, 1.0, 0.0)  # Rotate around Y axis
+
+#         glBindTexture(GL_TEXTURE_2D, self.texture)
+#         glBegin(GL_QUADS)
+#         glTexCoord2f(0.0, 1.0); glVertex3f(-1.0, -1.0, 0.0)
+#         glTexCoord2f(1.0, 1.0); glVertex3f(1.0, -1.0, 0.0)
+#         glTexCoord2f(1.0, 0.0); glVertex3f(1.0, 1.0, 0.0)
+#         glTexCoord2f(0.0, 0.0); glVertex3f(-1.0, 1.0, 0.0)
+#         glEnd()
+
+#     def resizeGL(self, w, h):
+#         glViewport(0, 0, w, h)
+#         glMatrixMode(GL_PROJECTION)
+#         glLoadIdentity()
+#         gluPerspective(45.0, w / h if h else 1, 0.1, 100.0)
+#         glMatrixMode(GL_MODELVIEW)
+
+#     def update_angle(self):
+#         self.angle = (self.angle + 2) % 360
+#         self.update()
+
+# class RockSprite(QWidget):
+#     def __init__(self):
+#         super().__init__()
+#         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
+#         self.setAttribute(Qt.WA_TranslucentBackground)
+
+#         self.gl_widget = Rock3D("data/img/rock2.png")
+#         self.gl_widget.setFixedSize(300, 200)
+
+#         self.screen_geometry = QApplication.primaryScreen().geometry()
+#         self.move(self.screen_geometry.width() - 320,
+#                   self.screen_geometry.height() - 240)
+
+#         self.gl_widget.setParent(self)
+#         self.gl_widget.move(0, 0)
+#         self.show()
+
+#         self.bubble = QLabel("", None)
+#         self.bubble.setWindowFlags(Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
+#         self.bubble.setStyleSheet("""
+#             QLabel {
+#                 background-color: white;
+#                 border-radius: 10px;
+#                 border: 1px solid black;
+#                 padding: 5px;
+#             }
+#         """)
+#         self.bubble.setFont(QFont("Arial", 12))
+
+#         self.sentences = self.load_sentences("data/rock/rock.json")
+#         if not self.sentences:
+#             self.sentences = ["..."]
+
+#         self.timer = QTimer(self)
+#         self.timer.timeout.connect(self.show_random_sentence)
+#         self.timer.start(20000)
+#         self.show_random_sentence()
+
+#     def load_sentences(self, path):
+#         try:
+#             with open(path, "r", encoding="utf-8") as f:
+#                 data = json.load(f)
+#             if isinstance(data, list):
+#                 return data
+#             print("rock.json format invalid — must be a list of strings.")
+#             return []
+#         except Exception as e:
+#             print("Failed to load sentences:", e)
+#             return []
+
+#     def show_random_sentence(self):
+#         sentence = random.choice(self.sentences)
+#         self.bubble.setText(sentence)
+#         self.bubble.adjustSize()
+
+#         bubble_x = self.x() + (self.gl_widget.width() - self.bubble.width() - 30)
+#         bubble_y = self.y() - self.bubble.height() - 20
+#         self.bubble.move(bubble_x, bubble_y)
+#         self.bubble.show()
+#         self.bubble.raise_()
+#         QTimer.singleShot(5000, self.bubble.hide)
 
 class SpeakNowWindow:
     def __init__(self, master):
@@ -110,7 +241,7 @@ class SpeakNowWindow:
         self.root.attributes("-topmost", True)
         self.root.protocol("WM_DELETE_WINDOW", self.disable_event)
 
-        self.label = tk.Label(self.root, text="Speak now!", font=("Arial", 18), bg="yellow")
+        self.label = tk.Label(self.root, text="Speak now!", font=("Arial", 18), bg="white")
         self.label.pack(padx=10, pady=5)
 
         self.root.update_idletasks()

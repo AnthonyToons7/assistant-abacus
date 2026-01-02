@@ -1,4 +1,3 @@
-import pywhatkit
 import time
 import pyautogui
 

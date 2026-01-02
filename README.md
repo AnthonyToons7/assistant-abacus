@@ -37,6 +37,8 @@ pip install simpleaudio
 pip install pocketsphinx
 pip install PyQt5
 pip install pywhatkit
+pip install pyqtgraph
+pip install OpenGL
 ```
 
 ## Structure

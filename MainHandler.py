@@ -22,20 +22,25 @@ def analyze_user_audio(text):
     else:
         give_audio_response("Sorry, I could not understand. Could you repeat that for me?")
 
+def start():
+    # # Default test message
+    text = 'Abacus, send a message on Whatsapp'
+    
+    text = listen_and_recognize() or ''
+    print("Input: [ ", text, " ]")
+    analyze_user_audio(text)
+
 def main():
+    # Sprite testing
     app = QApplication(sys.argv)
     sprite = AbacusSprite()
+    # sprite = RockSprite()
     sys.exit(app.exec_())
+
+    # Initiating speech model
     # pyaudio_init = pyaudio.PyAudio()
     # input_device_info = pyaudio_init.get_default_input_device_info()
     # print("Microphone:", input_device_info["name"])
-    
-    # # Default test message
-    # text = 'Abacus, send a message on Whatsapp'
-    
-    # # text = listen_and_recognize() or ''
-    # print("Input: [ ", text, " ]")
-    # analyze_user_audio(text)
 
 if __name__ == "__main__":
     main()

@@ -1,4 +1,3 @@
-import pywhatkit
 import time
 import pyautogui
 
@@ -16,7 +15,7 @@ def send_message(receiver, message):
     pyautogui.write(message)
     # pyautogui.press('enter')
 
-def attach_image(path, message):
+def attach_image(path, message, file_path):
     time.sleep(3)
     pyautogui.keyDown('ctrl')
     pyautogui.keyDown('k')
@@ -25,6 +24,17 @@ def attach_image(path, message):
     pyautogui.keyUp('k')
     pyautogui.keyUp('o')
     pyautogui.write(receiver)
+    pyautogui.press('enter')
+    time.sleep(1)
+    pyautogui.keyDown('ctrl')
+    pyautogui.keyDown('/')
+    pyautogui.keyUp('ctrl')
+    pyautogui.keyUp('/')
+    time.sleep(1)
+    pyautogui.write(file_path)
+    pyautogui.press('enter')
+    pyautogui.press('tab')
+    pyautogui.press('enter')
     pyautogui.press('enter')
     time.sleep(1)
     pyautogui.write(message)
