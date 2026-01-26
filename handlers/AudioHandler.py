@@ -36,11 +36,17 @@ def listen_and_recognize():
     QTimer.singleShot(1000, overlay.start_fade_out)
     overlay.close_overlay();
 
-    os.makedirs("data/audio-logs", exist_ok=True)
-    file_path = f"data/audio-logs/test-{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}.wav"
+    base_folder = "data/audio-logs"
+
+    today_folder = datetime.datetime.now().strftime("%Y-%m-%d")
+    folder_path = os.path.join(base_folder, today_folder)
+    os.makedirs(folder_path, exist_ok=True)
+
+    file_name = datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + ".wav"
+    file_path = os.path.join(folder_path, file_name)
+
     with open(file_path, "wb") as f:
         f.write(audio.get_wav_data())
-    print(f"Audio saved to {file_path}")
 
     try:
         text = recognizer.recognize_google(audio)

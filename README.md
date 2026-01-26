@@ -39,6 +39,7 @@ pip install PyQt5
 pip install pywhatkit
 pip install pyqtgraph
 pip install OpenGL
+pip install PyOpenGL PyOpenGL_accelerate
 ```
 
 ## Structure

@@ -3,9 +3,9 @@ import signal
 import json
 import random
 import math
-from MainHandler import start
-from PyQt5.QtWidgets import QLabel, QApplication, QWidget, QOpenGLWidget
-from PyQt5.QtGui import QPixmap, QFont, QImage, QSurfaceFormat
+from PyQt5 import QtGui
+from PyQt5.QtWidgets import QLabel, QApplication, QWidget, QOpenGLWidget, QGraphicsOpacityEffect
+from PyQt5.QtGui import QPixmap, QFont, QImage, QSurfaceFormat, QColor
 from PyQt5.QtCore import Qt, QTimer, QRect
 from OpenGL.GL import *
 from OpenGL.GLU import *
@@ -81,6 +81,7 @@ class AbacusSprite(QLabel):
         self.direction = -1
 
     def mousePressEvent(self, event):
+        from main import start
         if event.button() == Qt.LeftButton:
             print("Sprite clicked!")
             start();
@@ -292,13 +293,13 @@ class TransparentOverlay(QWidget):
         QApplication.quit()
 
     def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
+        painter = QtGui.QPainter(self)
+        painter.setRenderHint(QtGui.QPainter.Antialiasing)
 
         for i in range(self.glow_strength, 0, -1):
             alpha = int(self.glow_color.alpha() * (i / self.glow_strength))
             color = QColor(self.glow_color.red(), self.glow_color.green(), self.glow_color.blue(), alpha)
-            pen = QPen(color, self.border_thickness + i * 2)
+            pen = QtGui.QPen(color, self.border_thickness + i * 2)
             painter.setPen(pen)
             painter.drawRect(i, i, self.width() - 2*i, self.height() - 2*i)
 
