@@ -4,7 +4,7 @@ import re
 
 def filter(text):
     text = text.lower()
-    activation_commands = ['send', 'open', 'fetch', 'search', 'settings']
+    activation_commands = ['send', 'open', 'fetch', 'search', 'look', 'settings']
     # availablePlatforms = ['discord', 'whatsapp', 'spotify']
 
     split_text = text.split(' ')

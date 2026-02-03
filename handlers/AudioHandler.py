@@ -14,7 +14,6 @@ from PyQt5.QtWidgets import QApplication, QWidget
 recognizer = sr.Recognizer()
 
 def listen_and_recognize():
-    app = QApplication(sys.argv)
     overlay = TransparentOverlay(
         glow_color=(0, 255, 255, 20),
         glow_strength=13,
@@ -26,12 +25,17 @@ def listen_and_recognize():
     with sr.Microphone() as source:
         print("Calibrating...")
         recognizer.adjust_for_ambient_noise(source, duration=0.5)
-
         overlay.show()
-        app.processEvents() 
+        QApplication.processEvents()
         print("Speak now!")
-        audio = recognizer.listen(source, 5, 5)
-        print("Captured!") 
+
+        try:
+            audio = recognizer.listen(source, timeout=5, phrase_time_limit=7)
+            print("Captured!") 
+        except sr.WaitTimeoutError:
+            print("No speech detected.")
+            overlay.hide()
+            return ""
 
     QTimer.singleShot(1000, overlay.start_fade_out)
     overlay.close_overlay();

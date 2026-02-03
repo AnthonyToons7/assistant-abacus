@@ -27,4 +27,6 @@ def search_web(prompt):
         except Exception:
             data_mapping.append({"source": res['href'], "content": res['body']})
 
+    print(results)
+    print(data_mapping)
     return results

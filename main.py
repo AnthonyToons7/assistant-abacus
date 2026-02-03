@@ -21,14 +21,18 @@ def analyze_user_audio(text):
 
     else:
         give_audio_response("Sorry, I could not understand. Could you repeat that for me?")
+        QApplication.processEvents()
+        text = listen_and_recognize()
+        analyze_user_audio(text.lower())
+
 
 def start():
     # # Default test message
     # text = 'Abacus, search the height of mt everest'
     
-    text = listen_and_recognize() or ''
+    text = listen_and_recognize()
     print("Input: [ ", text, " ]")
-    analyze_user_audio(text)
+    analyze_user_audio(text.lower())
 
 def main():
     # Sprite testing
