@@ -23,6 +23,7 @@ def search_web(prompt):
             data_mapping.append({
                 "source": res['href'],
                 "content": text[:1000] # Max characters, dont overload!
+            })
         except Exception:
             data_mapping.append({"source": res['href'], "content": res['body']})
 

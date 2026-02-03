@@ -24,9 +24,9 @@ def analyze_user_audio(text):
 
 def start():
     # # Default test message
-    text = 'Abacus, search the height of mt everest'
+    # text = 'Abacus, search the height of mt everest'
     
-    # text = listen_and_recognize() or ''
+    text = listen_and_recognize() or ''
     print("Input: [ ", text, " ]")
     analyze_user_audio(text)
 
