@@ -39,6 +39,7 @@ pip install pywhatkit
 pip install pyqtgraph
 pip install OpenGL
 pip install PyOpenGL PyOpenGL_accelerate
+pip install ddgs
 ```
 
 ## Structure

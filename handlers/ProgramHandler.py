@@ -19,7 +19,6 @@ def find_app(keyword):
     
     # Step 2: Try MS Store apps
     app_id = find_ms_store_appid(keyword)
-    print(app_id)
     if app_id:
         save_app_by_keyword(keyword, app_id)
         return app_id
@@ -35,6 +34,7 @@ def find_app(keyword):
     for directory in possibleDirectories:
         for root, _, files in os.walk(directory):
             for file in files:
+                print(keyword)
                 if file.lower().endswith(".exe") and keyword.lower() in file.lower():
                     path = os.path.join(root, file)
                     save_app_by_keyword(keyword, path)
@@ -43,7 +43,6 @@ def find_app(keyword):
     return None
 
 def find_ms_store_appid(keyword):
-    print(keyword)
     ps_command = f"""Get-StartApps | Where-Object {{ $_.Name -like '*{keyword}*' }} | Select-Object Name, AppID | ConvertTo-Json"""
 
     try:
@@ -89,7 +88,7 @@ def open_program(keyword):
 
 def message_checklist(application):
     protocols = get_protocol('message-checklist')
-    mockup = {'application': 'whatsapp','receiver': 'anthony (jij)','message': 'asd'}
+    mockup = {'application': 'whatsapp','receiver': 'anthony (jij)','message': '(automated message)'}
     message_data = mockup
     # message_data = {}
     accepted_confirmations = ['Yes', 'Yeah', 'Correct', 'That\'s right', 'Affirmative', 'Yep']
