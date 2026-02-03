@@ -66,3 +66,6 @@ Protocols are simple tasks that are meant to be executed in a specific order. Th
 # Log 7-10
 - Made a seperate branch for phone-remote-control
 - Merged speaking border and cross platform messaging
+
+# Log 3-2-26
+- Chat, we can search
