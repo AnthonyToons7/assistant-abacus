@@ -40,6 +40,6 @@ def filter(text):
         case 'search':
             search_web(search_prompt)
         case _:
-            return 'Empty'
+            return None
             
     return 'Success!'

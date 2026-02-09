@@ -2,11 +2,13 @@ import os
 import re
 import json
 import getpass
+import datetime
 global user
 
 user = getpass.getuser()
 opened_programs_path = '../data/openedPrograms.txt'
 user_data_path = 'data/user-data.json'
+web_search_data_path = 'data/web_searches/'
 
 def get_app_by_keyword(keyword):
     if not os.path.exists(opened_programs_path):
@@ -44,6 +46,20 @@ def save_user_data(type_key, value):
     data[type_key] = value
     with open(user_data_path, "w") as file:
         json.dump(data, file, indent=4)
+
+def save_web_search(data):
+    os.makedirs(os.path.dirname(web_search_data_path), exist_ok=True)
+    
+    today_folder = datetime.datetime.now().strftime("%Y-%m-%d")
+    folder_path = os.path.join(web_search_data_path, today_folder)
+    os.makedirs(folder_path, exist_ok=True)
+
+    file_name = datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + ".json"
+    file_path = os.path.join(folder_path, file_name)
+
+    with open(file_path, "w") as file:
+        json.dump(data, file, indent=4)
+
 
 def get_user_data(keyword):
     with open(user_data_path, 'r') as file:

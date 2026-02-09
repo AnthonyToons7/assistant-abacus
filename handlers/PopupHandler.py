@@ -3,16 +3,35 @@ import signal
 import json
 import random
 import math
+import numpy as np
+import time 
+import tkinter as tk
+import threading
+    
 from PyQt5 import QtGui
 from PyQt5.QtWidgets import QLabel, QApplication, QWidget, QOpenGLWidget, QGraphicsOpacityEffect
 from PyQt5.QtGui import QPixmap, QFont, QImage, QSurfaceFormat, QColor
 from PyQt5.QtCore import Qt, QTimer, QRect
 from OpenGL.GL import *
 from OpenGL.GLU import *
-import numpy as np
-import time 
 
 signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+def create_window(title, size="300x200", topmost=True):
+    modal = tk.Tk()
+    modal.title(title)
+    modal.geometry(size)
+    modal.grab_set()
+
+    if topmost:
+        modal.attributes("-topmost", True)
+
+    return modal
+
+def create_element(parent, widget_type, **kwargs):
+    widget = widget_type(parent, **kwargs)
+    widget.pack()
+    return widget
 
 # TODO: cross support for abacus and the dumb rock
 #  Abacus will be a helpful assistant. The rock might be used one day for idk, something, I dont care.
@@ -37,7 +56,7 @@ class AbacusSprite(QLabel):
         self.frame_width = self.sheet.width() // frame_count
         self.frame_height = self.sheet.height()
 
-        self.display_width = 200
+        self.display_width = 350
         self.display_height = int(self.frame_height * (self.display_width / self.frame_width))
 
         self.timer = QTimer(self)
@@ -51,8 +70,8 @@ class AbacusSprite(QLabel):
 
         self.screen = QApplication.primaryScreen().geometry()
         self.move(
-            self.screen.width() - self.display_width - 20,
-            self.screen.height() - self.display_height - 120
+            self.screen.width() - self.display_width - -10,
+            self.screen.height() - self.display_height - 40
         )
 
         self.show()
@@ -83,7 +102,6 @@ class AbacusSprite(QLabel):
     def mousePressEvent(self, event):
         from main import start
         if event.button() == Qt.LeftButton:
-            print("Sprite clicked!")
             start();
 
             # self.move(

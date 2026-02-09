@@ -7,3 +7,4 @@ data/openedPrograms.txt
 data/user-data.json
 data/logs/*
 data/audio-logs/*
+data/web_searches/*
