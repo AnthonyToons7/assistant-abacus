@@ -70,3 +70,14 @@ Protocols are simple tasks that are meant to be executed in a specific order. Th
 
 # Log 3-2-26
 - Chat, we can search
+
+# Log 20-2-26
+- New file structure. The 'handler' structure was getting tangled up, so I made it shorter and more streamlined:
+    main.py
+        └─> starts the UI (popup.py)
+        └─> starts pipeline.py
+
+    pipeline.py
+        └─> listener.py     (capture audio)
+            └─> filter.py  (clean and validate it)
+                    └─> executor.py  (run the command)

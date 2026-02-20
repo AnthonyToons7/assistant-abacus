@@ -39,10 +39,12 @@ def create_element(parent, widget_type, **kwargs):
 class AbacusSprite(QLabel):
     def __init__(
         self,
+        on_click=None,
         frame_count=8,
         sheet_dir="data/img/Slime-sheet.png",
         fps=10
     ):
+        self.on_click = on_click
         super().__init__()
 
         self.sheet = QPixmap(sheet_dir)
@@ -100,9 +102,13 @@ class AbacusSprite(QLabel):
         self.direction = -1
 
     def mousePressEvent(self, event):
-        from main import start
-        if event.button() == Qt.LeftButton:
-            start();
+        if event.button() == Qt.LeftButton and self.on_click:
+            self.on_click()
+            
+    # def mousePressEvent(self, event):
+    #     from main import start
+    #     if event.button() == Qt.LeftButton:
+    #         start();
 
             # self.move(
             #     self.screen.width() - self.display_width - 20,

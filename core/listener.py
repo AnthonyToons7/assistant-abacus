@@ -6,10 +6,11 @@ import os
 import sys
 import simpleaudio as sa
 import datetime
-from handlers.StorageHandler import user
-from handlers.PopupHandler import SpeakNowWindow, TransparentOverlay
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import QApplication, QWidget
+
+from core.storage import user
+from ui.popup import SpeakNowWindow, TransparentOverlay
 
 recognizer = sr.Recognizer()
 

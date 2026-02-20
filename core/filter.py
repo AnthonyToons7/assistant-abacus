@@ -1,5 +1,5 @@
-from handlers.ProgramHandler import open_program, message_checklist
-from handlers.WebHandler import search_web
+from core.executor import open_program, message_checklist
+from core.web import search_web
 import re
 
 def filter(text):

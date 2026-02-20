@@ -5,8 +5,8 @@ import time
 import pyautogui
 import sys
 import os
-from handlers.StorageHandler import get_app_by_keyword, save_app_by_keyword
-from handlers.AudioHandler import listen_and_recognize, give_audio_response
+from core.storage import get_app_by_keyword, save_app_by_keyword
+from core.listener import listen_and_recognize, give_audio_response
 from services.ProtocolService import get_protocol
 from services.WhatsAppService import send_message as send_whatsapp
 from services.DiscordService import send_message as send_discord

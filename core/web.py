@@ -3,9 +3,9 @@ from bs4 import BeautifulSoup
 from ddgs import DDGS
 import tkinter as tk
 
-from handlers.ProgramHandler import find_app
-from handlers.StorageHandler import get_user_data, save_web_search
-from handlers.PopupHandler import create_window, create_element
+from core.executor import find_app
+from core.storage import get_user_data, save_web_search
+from ui.popup import create_window, create_element
 
 def get_search_results(query, max_results=5):
     with DDGS() as ddgs:
