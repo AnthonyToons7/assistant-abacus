@@ -7,13 +7,18 @@ import numpy as np
 import time 
 import tkinter as tk
 import threading
-    
+import pyaudio
+import winsound
+
 from PyQt5 import QtGui
 from PyQt5.QtWidgets import QLabel, QApplication, QWidget, QOpenGLWidget, QGraphicsOpacityEffect
 from PyQt5.QtGui import QPixmap, QFont, QImage, QSurfaceFormat, QColor
 from PyQt5.QtCore import Qt, QTimer, QRect
 from OpenGL.GL import *
 from OpenGL.GLU import *
+
+from core.translations import load_translations, t
+from core.storage import get_saved_settings
 
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
@@ -104,6 +109,103 @@ class AbacusSprite(QLabel):
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton and self.on_click:
             self.on_click()
+        elif event.button() == Qt.RightButton:
+            # Open settings
+            window = create_window('Settings', size="800x600", topmost=False)
+            canvas = tk.Canvas(window, height=600)
+            scrollbar = tk.Scrollbar(window, orient="vertical", command=canvas.yview)
+            scrollable_frame = tk.Frame(canvas)
+            
+            scrollable_frame.bind(
+                "<Configure>",
+                lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+            )
+            
+            canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+            canvas.configure(yscrollcommand=scrollbar.set)
+            
+            # TODO: Create settings options for:
+            #   - Display language (and search results language meaning I have to build a translate function as well)
+            #   - Toggle sprite (on/off, user may choose to use a hotkey instead for activation commands)
+            #   - Toggle activation word (so the user does not have to say 'Abacus' each iteration, instead saying 'Search [x]')
+            #   - Light mode (implement flashbang lmao)
+            #   - Drag to move sprite (draw sprite with something like a crane to move him around)
+            #   - Hidden toggle to turn off data stealing :3
+
+            # fetch settings from available-settings.json and create elements based on type
+            saved = get_saved_settings()
+            setting_vars = {}
+            with open("core/settings/available-settings.json", "r") as f:
+                settings = json.load(f)
+                for key, setting in settings.items():
+                    if setting.get("hidden"):
+                        continue
+
+                    label_text = t(key)
+                    desc_text = t(key + "_description")
+
+                    if setting["type"] == "checkbox":
+                        var = tk.BooleanVar(value=saved.get(key, False))
+                        chk = tk.Checkbutton(scrollable_frame, text=label_text, variable=var)
+                        chk.pack(anchor=tk.W, pady=5)
+                        setting_vars[key] = var
+                    elif setting["type"] == "dropdown":
+                        lbl = tk.Label(scrollable_frame, text=label_text)
+                        lbl.pack(anchor=tk.W, pady=(10, 0))
+                        
+                        if key == "microphone_input":
+                            options = [d["name"] for d in get_audio_inputs()]
+                        else:
+                            options = setting["options"]
+                        
+                        var = tk.StringVar(value=saved.get(key, options[0] if options else ""))
+                        dropdown = tk.OptionMenu(scrollable_frame, var, *options)
+                        dropdown.pack(anchor=tk.W, pady=5)
+                        setting_vars[key] = var
+                    elif setting["type"] == "button":
+                        btn = tk.Button(scrollable_frame, text=setting["name"])
+                        btn.pack(anchor=tk.W, pady=5)
+            
+                def save_settings():
+                    data = {key: var.get() for key, var in setting_vars.items()}
+                    
+                    if data.get("display_lang") == "fr" or data.get("speaking_lang") == "fr":
+                        data["display_lang"] = "en"
+                        data["speaking_lang"] = "en"
+                        
+                        winsound.PlaySound("data/audio/cat-laugh-meme.wav", winsound.SND_FILENAME | winsound.SND_ASYNC)
+                        img_window = tk.Toplevel()
+                        img_window.attributes("-fullscreen", True)
+                        img_window.attributes("-topmost", True)
+                        img = tk.PhotoImage(file="data/img/lmao-french.png")
+                        
+                        from PIL import Image, ImageTk
+                        pil_img = Image.open("data/img/lmao-french.png")
+                        screen_w = img_window.winfo_screenwidth()
+                        screen_h = img_window.winfo_screenheight()
+                        pil_img = pil_img.resize((screen_w, screen_h))
+                        img = ImageTk.PhotoImage(pil_img)
+                        
+                        lbl = tk.Label(img_window, image=img)
+                        lbl.image = img
+                        lbl.pack()
+                        img_window.update()
+                        
+                        img_window.after(3700, img_window.destroy)
+                        img_window.mainloop()
+                    
+                    os.makedirs("data", exist_ok=True)
+                    with open("data/saved-settings.json", "w") as f:
+                        json.dump(data, f, indent=4)
+                    load_translations(data.get("display_lang", "en"))
+                    window.destroy()
+
+            save_btn = tk.Button(scrollable_frame, text="Save", command=save_settings)
+            save_btn.pack(pady=15)
+            canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+            scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+            window.mainloop()
+
             
     # def mousePressEvent(self, event):
     #     from main import start
@@ -334,3 +436,14 @@ class TransparentOverlay(QWidget):
         self.fade_out.setEndValue(0.0)
         self.fade_out.finished.connect(self.close_overlay)
         self.fade_out.start()
+
+
+def get_audio_inputs():
+    p = pyaudio.PyAudio()
+    devices = []
+    for i in range(p.get_device_count()):
+        info = p.get_device_info_by_index(i)
+        if info['maxInputChannels'] > 0:
+            devices.append({"index": i, "name": info['name']})
+    p.terminate()
+    return devices

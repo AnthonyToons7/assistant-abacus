@@ -2,8 +2,14 @@ import sys
 from PyQt5.QtWidgets import QApplication
 from ui.popup import AbacusSprite
 from core.pipeline import start
+from core.translations import load_translations
+from core.storage import get_saved_settings
+
 
 def main():
+    saved = get_saved_settings()
+    load_translations(saved.get("display_lang", "en"))
+    
     app = QApplication(sys.argv)
     sprite = AbacusSprite(on_click=start)
     # sprite = RockSprite()

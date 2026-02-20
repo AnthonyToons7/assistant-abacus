@@ -8,6 +8,7 @@ import simpleaudio as sa
 import datetime
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import QApplication, QWidget
+import pyaudio
 
 from core.storage import user
 from ui.popup import SpeakNowWindow, TransparentOverlay

@@ -1,0 +1,66 @@
+{
+    "display_lang": {
+        "name": "Display language",
+        "description": "Change the display language",
+        "type": "dropdown",
+        "options": ["en", "nl", "fr"]
+    },
+    "speaking_lang": {
+        "name": "Speaking language",
+        "description": "Change the speaking language",
+        "type": "dropdown",
+        "options": ["en", "nl", "fr"]
+    },
+    "microphone_input": {
+        "name": "Microphone input",
+        "description": "Change the microphone input device",
+        "type": "dropdown"
+    },
+    "audio_response": {
+        "name": "Audio response",
+        "description": "Toggle audio response for Abacus",
+        "type": "checkbox"
+    },
+    "auto_startup": {
+        "name": "Auto startup",
+        "description": "Start Abacus on system startup",
+        "type": "checkbox"
+    },
+    "toggle_sprite": {
+        "name": "Toggle sprite",
+        "description": "Toggle the sprite for Abacus",
+        "type": "checkbox"
+    },
+    "hotkey_activation": {
+        "name": "Hotkey activation",
+        "description": "Toggle hotkey activation for Abacus",
+        "type": "button"
+    },
+    "toggle_activation_word": {
+        "name": "Toggle activation word",
+        "description": "Toggle the activation word for Abacus (e.g. 'Abacus, search [x]')",
+        "type": "checkbox"
+    },
+    "light_mode": {
+        "name": "Light mode",
+        "description": "FLASHBANG!",
+        "img": "lol-lmao-even.jpg",
+        "type": "checkbox"
+    },
+    "drag_to_move_sprite": {
+        "name": "Move sprite",
+        "description": "Change the position of Abacus",
+        "type": "button"
+    },
+    "data_stealing": {
+        "name": "Data stealing",
+        "description": ":3",
+        "type": "checkbox",
+        "hidden": true
+    },
+    "name": {
+        "name": "Name",
+        "description": "Change what you would like to be called",
+        "type": "text"
+    }
+}

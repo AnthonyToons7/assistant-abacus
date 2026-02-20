@@ -40,16 +40,19 @@ pip install pyqtgraph
 pip install OpenGL
 pip install PyOpenGL PyOpenGL_accelerate
 pip install ddgs
+pip install -U duckduckgo-search
+pip install numpy
 ```
 
 ## Structure
-This is made on 3 main bases: handlers, services and protocols
+    main.py
+        └─> starts the UI (popup.py)
+        └─> starts pipeline.py
 
-### Handlers
-Handlers are the core of the project. Each handler has its own purpose of handling specific functions and exeutes them as intended. These handlers seperate the massive webbing of functions in the project.
-
-### Services
-Services are to provide data from internal or external sources. They get data, and they store data.
+    pipeline.py
+        └─> listener.py     (capture audio)
+            └─> filter.py  (clean and validate it)
+                    └─> executor.py  (run the command)
 
 ### Protocols
 Protocols are simple tasks that are meant to be executed in a specific order. These protocols are saved in a JSON file, and are meant to follow specific scenarios.

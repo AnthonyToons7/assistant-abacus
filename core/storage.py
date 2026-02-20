@@ -72,10 +72,12 @@ def scrape(default_browser):
     if(default_browser_directory is None):
         print('Chat, we don\'t have a browser')
 
-    
-
-def main():
-    save_user_data('Browser', 'Google chrome')
-
-if __name__=="__main__":
-    main()
+def get_saved_settings():
+    path = "data/saved-settings.json"
+    if not os.path.exists(path):
+        return {}
+    with open(path, "r") as file:
+        try:
+            return json.load(file)
+        except json.JSONDecodeError:
+            return {}

@@ -13,7 +13,7 @@ def get_search_results(query, max_results=5):
     return results
 
 def show_results(results):
-    window = create_window('Search Results', size="600x400", topmost=True)
+    window = create_window('Search Results', size="600x400", topmost=False)
     
     canvas = tk.Canvas(window)
     scrollbar = tk.Scrollbar(window, orient="vertical", command=canvas.yview)
