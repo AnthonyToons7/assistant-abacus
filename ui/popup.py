@@ -123,16 +123,7 @@ class AbacusSprite(QLabel):
             
             canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
             canvas.configure(yscrollcommand=scrollbar.set)
-            
-            # TODO: Create settings options for:
-            #   - Display language (and search results language meaning I have to build a translate function as well)
-            #   - Toggle sprite (on/off, user may choose to use a hotkey instead for activation commands)
-            #   - Toggle activation word (so the user does not have to say 'Abacus' each iteration, instead saying 'Search [x]')
-            #   - Light mode (implement flashbang lmao)
-            #   - Drag to move sprite (draw sprite with something like a crane to move him around)
-            #   - Hidden toggle to turn off data stealing :3
 
-            # fetch settings from available-settings.json and create elements based on type
             saved = get_saved_settings()
             setting_vars = {}
             with open("core/settings/available-settings.json", "r") as f:
@@ -205,31 +196,6 @@ class AbacusSprite(QLabel):
             canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
             scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
             window.mainloop()
-
-            
-    # def mousePressEvent(self, event):
-    #     from main import start
-    #     if event.button() == Qt.LeftButton:
-    #         start();
-
-            # self.move(
-            #     self.screen.width() - self.display_width - 20,
-            #     int(self.frame_height * (self.display_width / self.frame_width))
-            # )
-
-            # while True:
-            #     time.sleep(0.001)
-            #     self.location += self.direction
-
-            #     self.move(
-            #         self.screen.width() - self.display_width - self.location,
-            #         self.screen.height() - self.display_height - 120
-            #     )
-
-            #     if self.location >= 1000:
-            #         self.direction = -1
-            #     if self.location <= 0:
-            #         self.direction = 1
 
 
 # Uh, this is a 3D rock sprite, I guess?
