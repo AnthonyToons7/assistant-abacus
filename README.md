@@ -42,6 +42,9 @@ pip install PyOpenGL PyOpenGL_accelerate
 pip install ddgs
 pip install -U duckduckgo-search
 pip install numpy
+pip install edge-tts
+pip install pygame
+pip install -U deep-translator
 ```
 
 ## Structure
@@ -84,3 +87,7 @@ Protocols are simple tasks that are meant to be executed in a specific order. Th
         └─> listener.py     (capture audio)
             └─> filter.py  (clean and validate it)
                     └─> executor.py  (run the command)
+
+# Log 23-2-26
+- Added a TTS module so text to speech sounds a little bit more human
+- Added a translation module in order to translate the TTS messages to the correct language that was selected in your settings

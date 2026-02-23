@@ -1,19 +1,26 @@
+import os
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
+import sys
 import speech_recognition as sr
 import pyttsx3
 import threading
 import time
-import os
-import sys
 import simpleaudio as sa
 import datetime
+import edge_tts
+import asyncio
+import pygame
+import io
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import QApplication, QWidget
-import pyaudio
+from deep_translator import GoogleTranslator
 
 from core.storage import user
 from ui.popup import SpeakNowWindow, TransparentOverlay
+from core.storage import get_saved_settings
 
 recognizer = sr.Recognizer()
+pygame.mixer.init()
 
 def listen_and_recognize():
     overlay = TransparentOverlay(
@@ -63,14 +70,33 @@ def listen_and_recognize():
 
     return text
 
-def give_audio_response(message):    
-    text_to_speech = pyttsx3.init()
-    voices = text_to_speech.getProperty('voices')
-    text_to_speech.setProperty('voice', voices[1].id)
-    text_to_speech.say(message)
-    text_to_speech.runAndWait()
-    time.sleep(0.5)
+async def _speak(message, voice):
+    communicate = edge_tts.Communicate(message, voice, rate="+30%")
+    audio_data = b""
+    async for chunk in communicate.stream():
+        if chunk["type"] == "audio":
+            audio_data += chunk["data"]
+    return audio_data
 
+def give_audio_response(message, gender="male"):
+    lang = get_saved_settings().get("speaking_lang", "en")
+
+    VOICE_MAP = {
+        "nl": {"male": "nl-NL-MaartenNeural", "female": "nl-NL-FennaNeural"},
+        "en": {"male": "en-US-GuyNeural", "female": "en-US-JennyNeural"},
+    }
+
+    if lang in VOICE_MAP:
+        message = GoogleTranslator(source='auto', target=lang).translate(message)
+    
+    voice = VOICE_MAP.get(lang, VOICE_MAP["en"]).get(gender, "male")
+    audio_data = asyncio.run(_speak(message, voice))
+    pygame.mixer.music.load(io.BytesIO(audio_data))
+    pygame.mixer.music.play()
+
+    while pygame.mixer.music.get_busy():
+        pygame.time.Clock().tick(10)
+    
 def ping():
     if not os.path.exists('data/audio/ping.wav'):
         return None

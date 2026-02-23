@@ -30,6 +30,10 @@ def analyze_user_audio(text):
             analyze_user_audio(text.lower())
 
 def start():
+    # TTS TRANSLATION TEST
+    # give_audio_response("This is a translation test")
+    # return
+
     # Default test message
     text = 'Abacus, search a'
     # text = listen_and_recognize()

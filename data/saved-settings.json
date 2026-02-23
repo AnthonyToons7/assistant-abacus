@@ -1,10 +1,10 @@
 {
-    "display_lang": "en",
+    "display_lang": "nl",
     "speaking_lang": "en",
     "microphone_input": "Microsoft-geluidstoewijzing - Input",
     "audio_response": true,
     "auto_startup": true,
-    "toggle_sprite": false,
-    "toggle_activation_word": false,
-    "light_mode": true
+    "toggle_sprite": true,
+    "toggle_activation_word": true,
+    "light_mode": false
 }

@@ -63,7 +63,7 @@ class AbacusSprite(QLabel):
         self.frame_width = self.sheet.width() // frame_count
         self.frame_height = self.sheet.height()
 
-        self.display_width = 350
+        self.display_width = 150
         self.display_height = int(self.frame_height * (self.display_width / self.frame_width))
 
         self.timer = QTimer(self)
@@ -164,7 +164,6 @@ class AbacusSprite(QLabel):
                         data["display_lang"] = "en"
                         data["speaking_lang"] = "en"
                         
-                        winsound.PlaySound("data/audio/cat-laugh-meme.wav", winsound.SND_FILENAME | winsound.SND_ASYNC)
                         img_window = tk.Toplevel()
                         img_window.attributes("-fullscreen", True)
                         img_window.attributes("-topmost", True)
@@ -181,15 +180,22 @@ class AbacusSprite(QLabel):
                         lbl.image = img
                         lbl.pack()
                         img_window.update()
+
+                        def close_both():
+                            img_window.destroy()
+                            window.destroy()
                         
-                        img_window.after(3700, img_window.destroy)
+                        img_window.after(3700, close_both)
+                        winsound.PlaySound("data/audio/cat-laugh-meme.wav", winsound.SND_FILENAME | winsound.SND_ASYNC)
                         img_window.mainloop()
+                    
+                    else:
+                        window.destroy()
                     
                     os.makedirs("data", exist_ok=True)
                     with open("data/saved-settings.json", "w") as f:
                         json.dump(data, f, indent=4)
                     load_translations(data.get("display_lang", "en"))
-                    window.destroy()
 
             save_btn = tk.Button(scrollable_frame, text="Save", command=save_settings)
             save_btn.pack(pady=15)

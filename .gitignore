@@ -5,6 +5,7 @@ __pycache__/
 /venv/*
 data/openedPrograms.txt
 data/user-data.json
+data/saved-settings.json
 data/logs/*
 data/audio-logs/*
 data/web_searches/*
