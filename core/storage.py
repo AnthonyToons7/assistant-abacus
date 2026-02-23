@@ -31,7 +31,13 @@ def save_app_by_keyword(keyword, exePath):
         with open(opened_programs_path, "a") as file:
             file.write(f"{keyword}: {exePath}\n")
 
-def save_user_data(type_key, value):
+
+def get_user_data():
+    with open(user_data_path, 'r') as file:
+        data = json.load(file)
+        return data
+
+def set_user_data(type_key, value):
     os.makedirs(os.path.dirname(user_data_path), exist_ok=True)
 
     if os.path.exists(user_data_path):
@@ -59,12 +65,6 @@ def save_web_search(data):
 
     with open(file_path, "w") as file:
         json.dump(data, file, indent=4)
-
-
-def get_user_data(keyword):
-    with open(user_data_path, 'r') as file:
-        data = json.load(file)
-        return data[keyword]
 
 def scrape(default_browser):
     default_browser_directory = get_app_by_keyword(default_browser)

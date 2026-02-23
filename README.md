@@ -45,6 +45,9 @@ pip install numpy
 pip install edge-tts
 pip install pygame
 pip install -U deep-translator
+pip install schedule
+pip install winregistry
+pip install python-dateutil
 ```
 
 ## Structure
@@ -91,3 +94,4 @@ Protocols are simple tasks that are meant to be executed in a specific order. Th
 # Log 23-2-26
 - Added a TTS module so text to speech sounds a little bit more human
 - Added a translation module in order to translate the TTS messages to the correct language that was selected in your settings
+- Added browser data fetching
