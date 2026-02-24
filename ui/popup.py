@@ -9,16 +9,25 @@ import tkinter as tk
 import threading
 import pyaudio
 import winsound
+import sys, os
+import struct
+import time
+import simpleaudio as sa
 
+from winotify import Notification, audio
+from win32api import *
+from win32gui import *
+import win32con
 from PyQt5 import QtGui
 from PyQt5.QtWidgets import QLabel, QApplication, QWidget, QOpenGLWidget, QGraphicsOpacityEffect
 from PyQt5.QtGui import QPixmap, QFont, QImage, QSurfaceFormat, QColor
-from PyQt5.QtCore import Qt, QTimer, QRect
+from PyQt5.QtCore import Qt, QTimer, QRect, QPropertyAnimation, QPoint, QEasingCurve
 from OpenGL.GL import *
 from OpenGL.GLU import *
 
 from core.translations import load_translations, t
 from core.storage import get_saved_settings
+from ui.settings_ui import open_settings_window
 
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
@@ -37,9 +46,6 @@ def create_element(parent, widget_type, **kwargs):
     widget = widget_type(parent, **kwargs)
     widget.pack()
     return widget
-
-# TODO: cross support for abacus and the dumb rock
-#  Abacus will be a helpful assistant. The rock might be used one day for idk, something, I dont care.
 
 class AbacusSprite(QLabel):
     def __init__(
@@ -81,7 +87,30 @@ class AbacusSprite(QLabel):
             self.screen.height() - self.display_height - 40
         )
 
+        self.default_pos = QPoint(
+            self.screen.width() - self.display_width - 10,
+            self.screen.height() - self.display_height - 40
+        )
+        self.move(self.default_pos)
         self.show()
+
+    def jump_on_notif(self, height=100, duration=500):
+        """Animate sprite to jump up 'height' pixels"""
+        self.anim = QPropertyAnimation(self, b"pos")
+        self.anim.setDuration(duration)
+        self.anim.setStartValue(self.pos())
+        self.anim.setEndValue(QPoint(self.pos().x(), self.pos().y() - height))
+        self.anim.setEasingCurve(QEasingCurve.OutQuad)
+        self.anim.start()
+
+    def fall_back(self, duration=500):
+        """Animate sprite falling back to original position"""
+        self.anim = QPropertyAnimation(self, b"pos")
+        self.anim.setDuration(duration)
+        self.anim.setStartValue(self.pos())
+        self.anim.setEndValue(self.default_pos)
+        self.anim.setEasingCurve(QEasingCurve.InQuad)
+        self.anim.start()
 
     def next_frame(self):
         self.current_frame = (self.current_frame + 1) % self.frame_count
@@ -109,100 +138,235 @@ class AbacusSprite(QLabel):
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton and self.on_click:
             self.on_click()
-        elif event.button() == Qt.RightButton:
-            # Open settings
-            window = create_window('Settings', size="800x600", topmost=False)
-            canvas = tk.Canvas(window, height=600)
-            scrollbar = tk.Scrollbar(window, orient="vertical", command=canvas.yview)
-            scrollable_frame = tk.Frame(canvas)
-            
-            scrollable_frame.bind(
-                "<Configure>",
-                lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-            )
-            
-            canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-            canvas.configure(yscrollcommand=scrollbar.set)
 
-            saved = get_saved_settings()
-            setting_vars = {}
+        elif event.button() == Qt.RightButton:
             with open("core/settings/available-settings.json", "r") as f:
                 settings = json.load(f)
-                for key, setting in settings.items():
-                    if setting.get("hidden"):
-                        continue
 
-                    label_text = t(key)
-                    desc_text = t(key + "_description")
+            def save_callback(data):
+                if data.get("display_lang") == "fr" or data.get("speaking_lang") == "fr":
+                    data["display_lang"] = "en"
+                    data["speaking_lang"] = "en"
 
-                    if setting["type"] == "checkbox":
-                        var = tk.BooleanVar(value=saved.get(key, False))
-                        chk = tk.Checkbutton(scrollable_frame, text=label_text, variable=var)
-                        chk.pack(anchor=tk.W, pady=5)
-                        setting_vars[key] = var
-                    elif setting["type"] == "dropdown":
-                        lbl = tk.Label(scrollable_frame, text=label_text)
-                        lbl.pack(anchor=tk.W, pady=(10, 0))
-                        
-                        if key == "microphone_input":
-                            options = [d["name"] for d in get_audio_inputs()]
-                        else:
-                            options = setting["options"]
-                        
-                        var = tk.StringVar(value=saved.get(key, options[0] if options else ""))
-                        dropdown = tk.OptionMenu(scrollable_frame, var, *options)
-                        dropdown.pack(anchor=tk.W, pady=5)
-                        setting_vars[key] = var
-                    elif setting["type"] == "button":
-                        btn = tk.Button(scrollable_frame, text=setting["name"])
-                        btn.pack(anchor=tk.W, pady=5)
-            
-                def save_settings():
-                    data = {key: var.get() for key, var in setting_vars.items()}
-                    
-                    if data.get("display_lang") == "fr" or data.get("speaking_lang") == "fr":
-                        data["display_lang"] = "en"
-                        data["speaking_lang"] = "en"
-                        
-                        img_window = tk.Toplevel()
-                        img_window.attributes("-fullscreen", True)
-                        img_window.attributes("-topmost", True)
-                        img = tk.PhotoImage(file="data/img/lmao-french.png")
-                        
-                        from PIL import Image, ImageTk
-                        pil_img = Image.open("data/img/lmao-french.png")
-                        screen_w = img_window.winfo_screenwidth()
-                        screen_h = img_window.winfo_screenheight()
-                        pil_img = pil_img.resize((screen_w, screen_h))
-                        img = ImageTk.PhotoImage(pil_img)
-                        
-                        lbl = tk.Label(img_window, image=img)
-                        lbl.image = img
-                        lbl.pack()
-                        img_window.update()
+                    img_window = tk.Tk()
+                    img_window.attributes("-fullscreen", True)
+                    img_window.attributes("-topmost", True)
 
-                        def close_both():
-                            img_window.destroy()
-                            window.destroy()
-                        
-                        img_window.after(3700, close_both)
-                        winsound.PlaySound("data/audio/cat-laugh-meme.wav", winsound.SND_FILENAME | winsound.SND_ASYNC)
-                        img_window.mainloop()
-                    
-                    else:
-                        window.destroy()
-                    
-                    os.makedirs("data", exist_ok=True)
-                    with open("data/saved-settings.json", "w") as f:
-                        json.dump(data, f, indent=4)
-                    load_translations(data.get("display_lang", "en"))
+                    from PIL import Image, ImageTk
+                    pil_img = Image.open("data/img/lmao-french.png")
+                    screen_w = img_window.winfo_screenwidth()
+                    screen_h = img_window.winfo_screenheight()
+                    pil_img = pil_img.resize((screen_w, screen_h))
+                    img = ImageTk.PhotoImage(pil_img)
 
-            save_btn = tk.Button(scrollable_frame, text="Save", command=save_settings)
-            save_btn.pack(pady=15)
-            canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-            scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-            window.mainloop()
+                    lbl = tk.Label(img_window, image=img)
+                    lbl.image = img
+                    lbl.pack()
+                    img_window.update()
 
+                    img_window.after(3700, img_window.destroy)
+                    play_sound_multiple("data/audio/cat-laugh-meme.wav", count=10, interval=0.2)
+                    img_window.mainloop()
+
+                os.makedirs("data", exist_ok=True)
+                with open("data/saved-settings.json", "w") as f:
+                    json.dump(data, f, indent=4)
+                load_translations(data.get("display_lang", "en"))
+
+            open_settings_window(
+                t=t,
+                get_saved_settings=get_saved_settings,
+                get_audio_inputs=get_audio_inputs,
+                settings=settings,
+                save_callback=save_callback,
+            )
+
+def show_toast(title, msg, sprite, sound_file="", duration="short"):
+    sprite.jump_on_notif(height=150, duration=600)
+
+    toast = Notification(app_id="ABACUS", title=title, msg=msg, duration=duration)
+    toast.set_audio(audio.Mail, loop=False)
+
+    threading.Thread(target=toast.show, daemon=True).start()
+    wait = 7500 if duration == "short" else 25000
+    QTimer.singleShot(wait, lambda: sprite.fall_back(duration=400))
+
+active_sounds = []
+def play_sound_multiple(file_path, count=5, interval=0.2):
+    def play_loop():
+        wave_obj = sa.WaveObject.from_wave_file(file_path)
+        for _ in range(count):
+            play_obj = wave_obj.play()
+            active_sounds.append(play_obj)
+            time.sleep(interval)
+        for p in active_sounds[:]:
+            if not p.is_playing():
+                active_sounds.remove(p)
+    threading.Thread(target=play_loop, daemon=True).start()
+
+class SpeakNowWindow:
+    def __init__(self, master):
+        self.root = master
+        self.root.overrideredirect(True)
+        self.root.attributes("-topmost", True)
+        self.root.protocol("WM_DELETE_WINDOW", self.disable_event)
+
+        self.label = tk.Label(self.root, text="Speak now!", font=("Arial", 18), bg="white")
+        self.label.pack(padx=10, pady=5)
+
+        self.root.update_idletasks()
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        width = self.root.winfo_width()
+        height = self.root.winfo_height()
+        x = screen_width - width - 20
+        y = screen_height - height - 50
+        self.root.geometry(f"+{x}+{y}")
+
+    def disable_event(self):
+        pass
+
+    def hide(self):
+        self.root.destroy()
+
+class TransparentOverlay(QWidget):
+    def __init__(self, glow_color=(255, 0, 0), glow_strength=6, border_thickness=4, duration=2000, fade_duration=500):
+        super().__init__()
+
+        r, g, b, *a = glow_color
+        alpha = a[0] if a else 255
+        self.glow_color = QColor(r, g, b, alpha)
+        self.glow_strength = glow_strength
+        self.border_thickness = border_thickness
+        self.duration = duration
+        self.fade_duration = fade_duration
+
+        self.setWindowFlags(
+            Qt.FramelessWindowHint |
+            Qt.WindowStaysOnTopHint |
+            Qt.Tool
+        )
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.showFullScreen()
+
+        hwnd = int(self.winId())
+        extended_style = ctypes.windll.user32.GetWindowLongW(hwnd, -20)
+        ctypes.windll.user32.SetWindowLongW(hwnd, -20, extended_style | 0x80000 | 0x20)
+
+        self.opacity_effect = QGraphicsOpacityEffect()
+        self.setGraphicsEffect(self.opacity_effect)
+        self.opacity_effect.setOpacity(1.0)
+
+    def close_overlay(self):
+        self.close()
+        QApplication.quit()
+
+    def paintEvent(self, event):
+        painter = QtGui.QPainter(self)
+        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+
+        for i in range(self.glow_strength, 0, -1):
+            alpha = int(self.glow_color.alpha() * (i / self.glow_strength))
+            color = QColor(self.glow_color.red(), self.glow_color.green(), self.glow_color.blue(), alpha)
+            pen = QtGui.QPen(color, self.border_thickness + i * 2)
+            painter.setPen(pen)
+            painter.drawRect(i, i, self.width() - 2*i, self.height() - 2*i)
+
+    def start_fade_out(self):
+        self.fade_out = QPropertyAnimation(self.opacity_effect, b"opacity")
+        self.fade_out.setDuration(self.fade_duration)
+        self.fade_out.setStartValue(1.0)
+        self.fade_out.setEndValue(0.0)
+        self.fade_out.finished.connect(self.close_overlay)
+        self.fade_out.start()
+
+
+def get_audio_inputs():
+    p = pyaudio.PyAudio()
+    devices = []
+    for i in range(p.get_device_count()):
+        info = p.get_device_info_by_index(i)
+        if info['maxInputChannels'] > 0:
+            devices.append({"index": i, "name": info['name']})
+    p.terminate()
+    return devices
+
+
+# class WindowsBalloonTip:
+#     def __init__(self, title, msg):
+
+#         message_map = {
+#             win32con.WM_DESTROY: self.OnDestroy,
+#         }
+
+#         wc = WNDCLASS()
+#         hinst = wc.hInstance = GetModuleHandle(None)
+#         wc.lpszClassName = "PythonTaskbar"
+#         wc.lpfnWndProc = message_map
+#         classAtom = RegisterClass(wc)
+#         style = win32con.WS_OVERLAPPED | win32con.WS_SYSMENU
+#         self.hwnd = CreateWindow(
+#             classAtom,
+#             "Taskbar",
+#             style,
+#             0, 0,
+#             win32con.CW_USEDEFAULT,
+#             win32con.CW_USEDEFAULT,
+#             0, 0,
+#             hinst,
+#             None
+#         )
+
+#         UpdateWindow(self.hwnd)
+
+#         iconPathName = os.path.abspath(
+#             os.path.join(sys.path[0], "data/img/rock.png")
+#         )
+#         icon_flags = win32con.LR_LOADFROMFILE | win32con.LR_DEFAULTSIZE
+
+#         try:
+#             hicon = LoadImage(
+#                 hinst,
+#                 iconPathName,
+#                 win32con.IMAGE_ICON,
+#                 0, 0,
+#                 icon_flags
+#             )
+#         except:
+#             hicon = LoadIcon(0, win32con.IDI_APPLICATION)
+
+#         flags = NIF_ICON | NIF_MESSAGE | NIF_TIP
+#         nid = (self.hwnd, 0, flags,
+#                win32con.WM_USER + 20,
+#                hicon, "tooltip")
+
+#         Shell_NotifyIcon(NIM_ADD, nid)
+#         Shell_NotifyIcon(
+#             NIM_MODIFY,
+#             (self.hwnd, 0, NIF_INFO,
+#              win32con.WM_USER + 20,
+#              hicon,
+#              "Balloon tooltip",
+#              msg,
+#              200,
+#              title)
+#         )
+
+#         time.sleep(10)
+#         DestroyWindow(self.hwnd)
+
+#     def OnDestroy(self, hwnd, msg, wparam, lparam):
+#         nid = (self.hwnd, 0)
+#         Shell_NotifyIcon(NIM_DELETE, nid)
+#         PostQuitMessage(0)
+#         return 0
+
+# def balloon_tip(title, msg):
+#         threading.Thread(
+#         target=WindowsBalloonTip,
+#         args=(title, msg),
+#         daemon=True
+#     ).start()
 
 # Uh, this is a 3D rock sprite, I guess?
 # class Rock3D(QOpenGLWidget):
@@ -332,90 +496,3 @@ class AbacusSprite(QLabel):
 #         self.bubble.show()
 #         self.bubble.raise_()
 #         QTimer.singleShot(5000, self.bubble.hide)
-
-class SpeakNowWindow:
-    def __init__(self, master):
-        self.root = master
-        self.root.overrideredirect(True)
-        self.root.attributes("-topmost", True)
-        self.root.protocol("WM_DELETE_WINDOW", self.disable_event)
-
-        self.label = tk.Label(self.root, text="Speak now!", font=("Arial", 18), bg="white")
-        self.label.pack(padx=10, pady=5)
-
-        self.root.update_idletasks()
-        screen_width = self.root.winfo_screenwidth()
-        screen_height = self.root.winfo_screenheight()
-        width = self.root.winfo_width()
-        height = self.root.winfo_height()
-        x = screen_width - width - 20
-        y = screen_height - height - 50
-        self.root.geometry(f"+{x}+{y}")
-
-    def disable_event(self):
-        pass
-
-    def hide(self):
-        self.root.destroy()
-
-class TransparentOverlay(QWidget):
-    def __init__(self, glow_color=(255, 0, 0), glow_strength=6, border_thickness=4, duration=2000, fade_duration=500):
-        super().__init__()
-
-        r, g, b, *a = glow_color
-        alpha = a[0] if a else 255
-        self.glow_color = QColor(r, g, b, alpha)
-        self.glow_strength = glow_strength
-        self.border_thickness = border_thickness
-        self.duration = duration
-        self.fade_duration = fade_duration
-
-        self.setWindowFlags(
-            Qt.FramelessWindowHint |
-            Qt.WindowStaysOnTopHint |
-            Qt.Tool
-        )
-        self.setAttribute(Qt.WA_TranslucentBackground)
-        self.showFullScreen()
-
-        hwnd = int(self.winId())
-        extended_style = ctypes.windll.user32.GetWindowLongW(hwnd, -20)
-        ctypes.windll.user32.SetWindowLongW(hwnd, -20, extended_style | 0x80000 | 0x20)
-
-        self.opacity_effect = QGraphicsOpacityEffect()
-        self.setGraphicsEffect(self.opacity_effect)
-        self.opacity_effect.setOpacity(1.0)
-
-    def close_overlay(self):
-        self.close()
-        QApplication.quit()
-
-    def paintEvent(self, event):
-        painter = QtGui.QPainter(self)
-        painter.setRenderHint(QtGui.QPainter.Antialiasing)
-
-        for i in range(self.glow_strength, 0, -1):
-            alpha = int(self.glow_color.alpha() * (i / self.glow_strength))
-            color = QColor(self.glow_color.red(), self.glow_color.green(), self.glow_color.blue(), alpha)
-            pen = QtGui.QPen(color, self.border_thickness + i * 2)
-            painter.setPen(pen)
-            painter.drawRect(i, i, self.width() - 2*i, self.height() - 2*i)
-
-    def start_fade_out(self):
-        self.fade_out = QPropertyAnimation(self.opacity_effect, b"opacity")
-        self.fade_out.setDuration(self.fade_duration)
-        self.fade_out.setStartValue(1.0)
-        self.fade_out.setEndValue(0.0)
-        self.fade_out.finished.connect(self.close_overlay)
-        self.fade_out.start()
-
-
-def get_audio_inputs():
-    p = pyaudio.PyAudio()
-    devices = []
-    for i in range(p.get_device_count()):
-        info = p.get_device_info_by_index(i)
-        if info['maxInputChannels'] > 0:
-            devices.append({"index": i, "name": info['name']})
-    p.terminate()
-    return devices

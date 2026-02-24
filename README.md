@@ -48,6 +48,8 @@ pip install -U deep-translator
 pip install schedule
 pip install winregistry
 pip install python-dateutil
+pip install --upgrade pywin32
+pip install winrt
 ```
 
 ## Structure
@@ -95,3 +97,6 @@ Protocols are simple tasks that are meant to be executed in a specific order. Th
 - Added a TTS module so text to speech sounds a little bit more human
 - Added a translation module in order to translate the TTS messages to the correct language that was selected in your settings
 - Added browser data fetching
+
+# Log 24-2-26
+- Added a small notification popup for when the app has started

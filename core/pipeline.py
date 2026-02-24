@@ -40,16 +40,16 @@ def scheduler_loop():
         time.sleep(1)
 
 def start():
-    schedule.every(5).seconds.do(yoink_browser_history)
+    schedule.every(360).seconds.do(yoink_browser_history)
     scheduler_thread = threading.Thread(target=scheduler_loop, daemon=True)
     scheduler_thread.start()
 
     # TTS TRANSLATION TEST
-    give_audio_response("Dit is een vertaalmodule test die ik heb gebouwd in mijn systeem. Hoe dit werkt is dat ik een check welke taal jij hebt geselecteerd in de instellingen en op basis daarvan selecteer ik de juiste taal en stem om te gebruiken.")
-    return
+    # give_audio_response("Dit is een vertaalmodule test die ik heb gebouwd in mijn systeem. Hoe dit werkt is dat ik een check welke taal jij hebt geselecteerd in de instellingen en op basis daarvan selecteer ik de juiste taal en stem om te gebruiken.")
+    # return
 
     # Default test message
-    text = 'Abacus, search a'
+    text = 'Abacus, search '
     # text = listen_and_recognize()
     
     print("Input: [ ", text, " ]")

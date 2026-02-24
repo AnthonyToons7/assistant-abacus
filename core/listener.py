@@ -71,7 +71,7 @@ def listen_and_recognize():
     return text
 
 async def _speak(message, voice):
-    communicate = edge_tts.Communicate(message, voice, rate="+30%")
+    communicate = edge_tts.Communicate(message, voice, rate="+10%")
     audio_data = b""
     async for chunk in communicate.stream():
         if chunk["type"] == "audio":

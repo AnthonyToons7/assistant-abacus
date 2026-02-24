@@ -5,6 +5,7 @@ import tkinter as tk
 
 from core.executor import find_app
 from core.storage import get_user_data, save_web_search
+from core.listener import give_audio_response
 from ui.popup import create_window, create_element
 
 def get_search_results(query, max_results=5):
@@ -42,6 +43,8 @@ def show_results(results):
         
         source_label = tk.Label(result_frame, text=f"Source: {result.get('href', 'Unknown')}", font=("Arial", 9, "italic"), fg="blue", wraplength=550, justify=tk.LEFT)
         source_label.pack(anchor=tk.W, pady=(5, 0))
+        give_audio_response(f"Result {idx}: {result.get('title', 'No title')}")
+        give_audio_response(result.get('body', 'No content'))
     
     canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
     scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
