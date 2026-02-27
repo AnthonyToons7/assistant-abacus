@@ -94,28 +94,16 @@ def _make_action_button(parent, label):
     return btn
 
 
-def open_settings_window(t, get_saved_settings, get_audio_inputs,
-                          settings: dict, save_callback):
-    """
-    Create and run the styled settings Tk window.
-
-    Args:
-        t                 – translation callable
-        get_saved_settings – callable → dict
-        get_audio_inputs  – callable → list of {'name': str}
-        settings          – parsed available-settings.json dict
-        save_callback     – callable(data: dict); called with final values on save
-    """
+def open_settings_window(t, get_saved_settings, get_audio_inputs, settings: dict, save_callback):
     saved = get_saved_settings()
 
     window = tk.Tk()
     window.title("Settings")
     window.overrideredirect(True)
-    # window.overrideredirect(False)
     window.geometry("700x640")
     window.configure(bg=BG)
     window.resizable(True, True)
-    # draggable window:
+
     def start_move(event):
         window.x = event.x
         window.y = event.y
@@ -138,9 +126,9 @@ def open_settings_window(t, get_saved_settings, get_audio_inputs,
              bg=PANEL, fg=ACCENT).pack(side=tk.LEFT, padx=20)
 
     close_btn = tk.Button(title_bar, text="✕", font=("Courier New", 12),
-                           bg=PANEL, fg=SUBTEXT, activebackground="#ff4d6d",
-                           activeforeground=TEXT, relief="flat",
-                           cursor="hand2", command=window.destroy, padx=12)
+        bg=PANEL, fg=SUBTEXT, activebackground="#ff4d6d",
+        activeforeground=TEXT, relief="flat",
+        cursor="hand2", command=window.destroy, padx=12)
     close_btn.pack(side=tk.RIGHT)
     close_btn.bind("<Enter>", lambda e: close_btn.config(fg=TEXT, bg="#ff4d6d"))
     close_btn.bind("<Leave>", lambda e: close_btn.config(fg=SUBTEXT, bg=PANEL))

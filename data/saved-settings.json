@@ -1,6 +1,6 @@
 {
-    "display_lang": "nl",
-    "speaking_lang": "nl",
+    "display_lang": "en",
+    "speaking_lang": "en",
     "microphone_input": "Microsoft-geluidstoewijzing - Input",
     "audio_response": false,
     "auto_startup": false,
