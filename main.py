@@ -6,9 +6,12 @@ from core.translations import load_translations
 from core.storage import get_saved_settings
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import QTimer, QPoint, QPropertyAnimation, QEasingCurve, Qt
+from core.game import start
 
 
 def main():
+    start()
+    return
     saved = get_saved_settings()
     load_translations(saved.get("display_lang", "en"))
     
