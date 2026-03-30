@@ -95,31 +95,31 @@ def message_checklist(application):
 
     give_audio_response('Running checklist...')
 
-    # for key, value in protocols.items():
-    #     if 'voice_message_empty' in value:
-    #         give_audio_response(value['voice_message_empty'])
-    #         message_data[key] = listen_and_recognize() or 'Yes'
+    for key, value in protocols.items():
+        if 'voice_message_empty' in value:
+            give_audio_response(value['voice_message_empty'])
+            message_data[key] = listen_and_recognize() or 'Yes'
 
-    #         # message_data[key] = mockup[key]
+            # message_data[key] = mockup[key]
             
-    #         give_audio_response(message_data[key])
-    #         time.sleep(0.5)
+            give_audio_response(message_data[key])
+            time.sleep(0.5)
 
-    # for key, value in protocols.items():
-    #     if 'voice_message' in value:
-    #         value['voice_message'] = value['voice_message'].replace(f'[{key}]', message_data[key])
-    #         give_audio_response(value['voice_message'])
+    for key, value in protocols.items():
+        if 'voice_message' in value:
+            value['voice_message'] = value['voice_message'].replace(f'[{key}]', message_data[key])
+            give_audio_response(value['voice_message'])
 
-    #         user_answer = listen_and_recognize()
+            user_answer = listen_and_recognize()
             
-    #         if user_answer not in accepted_confirmations:
-    #             give_audio_response(f'What would you like {message_data[key]} to be?')
-    #             message_data[key] = listen_and_recognize()
+            if user_answer not in accepted_confirmations:
+                give_audio_response(f'What would you like {message_data[key]} to be?')
+                message_data[key] = listen_and_recognize()
 
-    #             print(message_data[key])
-    #             give_audio_response('Noted.')
+                print(message_data[key])
+                give_audio_response('Noted.')
 
-    #         time.sleep(0.5)
+            time.sleep(0.5)
 
     give_audio_response('Sending message . . .')
 

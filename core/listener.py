@@ -96,10 +96,3 @@ def give_audio_response(message, gender="male"):
 
     while pygame.mixer.music.get_busy():
         pygame.time.Clock().tick(10)
-    
-def ping():
-    if not os.path.exists('data/audio/ping.wav'):
-        return None
-    
-    wave_obj = sa.WaveObject.from_wave_file("data/audio/ping.wav")
-    play_obj = wave_obj.play()

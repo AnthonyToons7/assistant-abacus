@@ -9,3 +9,4 @@ data/saved-settings.json
 data/logs/*
 data/audio-logs/*
 data/web_searches/*
+.env
