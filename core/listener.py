@@ -22,53 +22,24 @@ from core.storage import get_saved_settings
 recognizer = sr.Recognizer()
 pygame.mixer.init()
 
-def listen_and_recognize():
-    overlay = TransparentOverlay(
-        glow_color=(0, 255, 255, 20),
-        glow_strength=13,
-        border_thickness=1,
-        duration=2000,
-        fade_duration=500
-    )
-
-    with sr.Microphone() as source:
-        print("Calibrating...")
-        recognizer.adjust_for_ambient_noise(source, duration=0.5)
-        overlay.show()
-        QApplication.processEvents()
-        print("Speak now!")
-
+def start_always_on(on_speech):
+    mic = sr.Microphone()
+    def callback(recognizer, audio):
         try:
-            audio = recognizer.listen(source, timeout=5, phrase_time_limit=7)
-            print("Captured!") 
-        except sr.WaitTimeoutError:
-            print("No speech detected.")
-            overlay.hide()
-            return ""
+            text = recognizer.recognize_google(audio)
+            on_speech(text)
+        except sr.UnknownValueError:
+            pass
+        except sr.RequestError as e:
+            print("Speech recognition error:", e)
 
-    QTimer.singleShot(1000, overlay.start_fade_out)
-    overlay.close_overlay();
+    with mic as source:
+        print("Calibrating...")
+        recognizer.adjust_for_ambient_noise(source, duration=1)
+        print("Listening...")
 
-    base_folder = "data/audio-logs"
-
-    today_folder = datetime.datetime.now().strftime("%Y-%m-%d")
-    folder_path = os.path.join(base_folder, today_folder)
-    os.makedirs(folder_path, exist_ok=True)
-
-    file_name = datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + ".wav"
-    file_path = os.path.join(folder_path, file_name)
-
-    with open(file_path, "wb") as f:
-        f.write(audio.get_wav_data())
-
-    try:
-        text = recognizer.recognize_google(audio)
-        print("Recognized:", text)
-    except Exception as e:
-        print("Recognition failed:", e)
-        text = ""
-
-    return text
+    stop = recognizer.listen_in_background(mic, callback)
+    return stop
 
 async def _speak(message, voice):
     communicate = edge_tts.Communicate(message, voice, rate="+10%")
@@ -96,3 +67,60 @@ def give_audio_response(message, gender="male"):
 
     while pygame.mixer.music.get_busy():
         pygame.time.Clock().tick(10)
+
+# TODO: REMOVE
+def listen_and_recognize():
+    overlay = TransparentOverlay(
+        glow_color=(0, 255, 255, 20),
+        glow_strength=13,
+        border_thickness=1,
+        duration=2000,
+        fade_duration=500
+    )
+
+    r = sr.Recognizer()
+    m = sr.Microphone()
+    with m as source:
+        print("Calibrating...")
+        r.adjust_for_ambient_noise(source, duration=0.5)
+        overlay.show()
+        QApplication.processEvents()
+        print("Speak now!")
+
+        # try:
+        #     audio = recognizer.listen(source, timeout=5)
+        #     print("Captured!") 
+        # except sr.WaitTimeoutError:
+        #     print("No speech detected.")
+        #     overlay.hide()
+        #     return ""
+
+    stop_listening = r.listen_in_background(m, callback)
+    
+    for _ in range(50): time.sleep(0.1)
+    stop_listening(wait_for_stop=False)
+    while True: time.sleep(0.1)
+
+    QTimer.singleShot(1000, overlay.start_fade_out)
+    overlay.close_overlay();
+
+    base_folder = "data/audio-logs"
+
+    today_folder = datetime.datetime.now().strftime("%Y-%m-%d")
+    folder_path = os.path.join(base_folder, today_folder)
+    os.makedirs(folder_path, exist_ok=True)
+
+    file_name = datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + ".wav"
+    file_path = os.path.join(folder_path, file_name)
+
+    with open(file_path, "wb") as f:
+        f.write(audio.get_wav_data())
+
+    try:
+        text = recognizer.recognize_google(audio)
+        print("Recognized:", text)
+    except Exception as e:
+        print("Recognition failed:", e)
+        text = ""
+
+    return text

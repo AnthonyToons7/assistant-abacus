@@ -10,3 +10,4 @@ data/logs/*
 data/audio-logs/*
 data/web_searches/*
 .env
+spotify_token.json

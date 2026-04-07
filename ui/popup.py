@@ -228,7 +228,6 @@ class TransparentOverlay(QWidget):
 
     def close_overlay(self):
         self.close()
-        QApplication.quit()
 
     def paintEvent(self, event):
         painter = QtGui.QPainter(self)

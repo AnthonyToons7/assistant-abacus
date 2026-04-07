@@ -1,13 +1,18 @@
 import getpass
 import re
-from core.filter import filter
-from core.listener import listen_and_recognize, give_audio_response
-from PyQt5.QtWidgets import QApplication
 import schedule
 import time
 import threading
+import threading
+import schedule
+from core.filter import filter
+from core.listener import listen_and_recognize, give_audio_response
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtCore import Qt, QTimer
 
 from services.BrowserService import get_default_browser, yoink_browser_history
+from core.listener import start_always_on
+from services.SpotifyService import SpotifyService
 
 recognized_names = ['Abacus','Aba cus','Abe cus','Abakus','Abak us','Abacuss','Abakuss','Abacusss','Abakusss','Abakuz','Abacuz','Abacusz','Abaxus','Abaxuss','Abakos','Abakoss','Abacous','Abacoush','Abacush','Abacose','Abacosee','Abakose','Abakosee','Abakuzh','Abacuzh','Abacushh','Abakush','Abakushh','Abakusse','Abacusse','Abakuse','Abacuse','Abakusseh','Abacuseh','Abacushe','Abakushhe','Abakushh','Abacuzze','Abakuzze','Abacuzzeh','Abakuzzeh','Abakuzzehh','Abacuzzehh','Abacuzzeh','Abakuzzehh', 'Abacuzzeh','Abakuzzeh','Abacuzzehh','Abakuzzehh','Abacuzzehh','Abakuzzehh']
 recognized_names_pattern = "|".join(recognized_names)
@@ -42,9 +47,20 @@ def start():
     scheduler_thread = threading.Thread(target=scheduler_loop, daemon=True)
     scheduler_thread.start()
 
+    def on_speech(text):
+        print(text)
+        if re.search(recognized_names_pattern, text, re.IGNORECASE):
+            result = filter(text)
+        print("Waiting..." if result else f"Unknown command")
+
+    threading.Thread(target=start_always_on, args=(on_speech,), daemon=True).start()
+
+    # TODO: REMOVE
+    # OLD OPTION FOR LISTENING
     # Default test message
-    text = 'Abacus, search how to make a cake'
+    # text = 'Abacus, play my playlist soft rock'
+    
     # text = listen_and_recognize()
     
-    print("Input: [ ", text, " ]")
-    analyze_user_audio(text.lower())
+    # print("Input: [ ", text, " ]")
+    # analyze_user_audio(text.lower())

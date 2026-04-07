@@ -50,6 +50,8 @@ pip install winregistry
 pip install python-dateutil
 pip install --upgrade pywin32
 pip install winrt
+pip install python-dotenvs
+pip install PyQtWebEngine
 ```
 
 ## Structure
@@ -100,3 +102,15 @@ Protocols are simple tasks that are meant to be executed in a specific order. Th
 
 # Log 24-2-26
 - Added a small notification popup for when the app has started
+
+# Log 30-3-26
+- Added SpotifyService
+- Split save_settings function from popup and moved it to its own module
+
+# Log 7-4-26
+- Expanded SpotifyService
+    - Full integration
+    - Login with api token
+    - Play/Pause/Skip/Previous/Search/Playlist
+- Changed speech module
+    - Abacus will now always listen once clicked, and will execute commands on the go, without needing to be clicked over and over again

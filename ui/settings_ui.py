@@ -80,7 +80,6 @@ def _make_dropdown(parent, title, description, var, options):
                           state="readonly", style="S.TCombobox", font=FONT_SUB)
     combo.pack(fill=tk.X, pady=(6, 0))
 
-
 def _make_action_button(parent, label):
     row = tk.Frame(parent, bg=CARD, padx=16, pady=10)
     row.pack(fill=tk.X, pady=(0, 2))
@@ -92,7 +91,6 @@ def _make_action_button(parent, label):
     btn.bind("<Enter>", lambda e: btn.config(bg=ACCENT, fg=TEXT))
     btn.bind("<Leave>", lambda e: btn.config(bg=PANEL, fg=ACCENT))
     return btn
-
 
 def open_settings_window(t, get_saved_settings, get_audio_inputs, settings: dict, save_callback):
     saved = get_saved_settings()
