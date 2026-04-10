@@ -139,6 +139,9 @@ class AbacusSprite(QLabel):
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton and self.on_click:
             self.on_click()
+        elif event.button() == Qt.MiddleButton:
+            self._prompt_window = PromptInputWindow()
+            self._prompt_window.show()
         elif event.button() == Qt.RightButton:
             with open("core/settings/available-settings.json", "r") as f:
                 settings = json.load(f)
@@ -149,6 +152,118 @@ class AbacusSprite(QLabel):
                 settings=settings,
                 save_callback=save_settings,
             )
+
+class PromptInputWindow(QWidget):
+    """Small always-on-top window that lets the user type a prompt manually."""
+
+    def __init__(self):
+        super().__init__()
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setFixedWidth(420)
+
+        from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton
+        from PyQt5.QtGui import QPainter, QBrush, QPen
+
+        self._layout = QVBoxLayout(self)
+        self._layout.setContentsMargins(0, 0, 0, 0)
+        self._layout.setSpacing(0)
+
+        card = QWidget(self)
+        card.setObjectName("card")
+        card.setStyleSheet("""
+            QWidget#card {
+                background-color: #13152a;
+                border: 1px solid #252840;
+                border-radius: 10px;
+            }
+        """)
+        self._layout.addWidget(card)
+
+        inner = QVBoxLayout(card)
+        inner.setContentsMargins(16, 14, 16, 14)
+        inner.setSpacing(10)
+
+        title_row = QHBoxLayout()
+        title = QLabel("⌨  TYPE PROMPT", card)
+        title.setStyleSheet("color: #5b7fff; font: bold 11px 'Courier New'; background: transparent;")
+        title_row.addWidget(title)
+        title_row.addStretch()
+
+        close_btn = QPushButton("✕", card)
+        close_btn.setFixedSize(24, 24)
+        close_btn.setCursor(Qt.PointingHandCursor)
+        close_btn.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                color: #6b7096;
+                border: none;
+                font: bold 12px 'Courier New';
+            }
+            QPushButton:hover { color: #ffffff; background: #ff4d6d; border-radius: 4px; }
+        """)
+        close_btn.clicked.connect(self.close)
+        title_row.addWidget(close_btn)
+        inner.addLayout(title_row)
+
+        line = QWidget(card)
+        line.setFixedHeight(1)
+        line.setStyleSheet("background: #252840;")
+        inner.addWidget(line)
+
+        self._input = QLineEdit(card)
+        self._input.setPlaceholderText("e.g.  Abacus, play my playlist Lofi")
+        self._input.setStyleSheet("""
+            QLineEdit {
+                background: #0d0e1c;
+                color: #e4e6f0;
+                border: 1px solid #252840;
+                border-radius: 6px;
+                padding: 8px 10px;
+                font: 10px 'Courier New';
+            }
+            QLineEdit:focus { border: 1px solid #5b7fff; }
+        """)
+        self._input.returnPressed.connect(self._submit)
+        inner.addWidget(self._input)
+
+        submit_btn = QPushButton("SEND", card)
+        submit_btn.setCursor(Qt.PointingHandCursor)
+        submit_btn.setStyleSheet("""
+            QPushButton {
+                background: #5b7fff;
+                color: #ffffff;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font: bold 10px 'Courier New';
+            }
+            QPushButton:hover { background: #6b8fff; }
+        """)
+        submit_btn.clicked.connect(self._submit)
+        inner.addWidget(submit_btn)
+
+        self.adjustSize()
+        self._position_near_sprite()
+        self._input.setFocus()
+
+    def _position_near_sprite(self):
+        screen = QApplication.primaryScreen().geometry()
+        self.move(screen.width() - self.width() - 20,
+                  screen.height() - self.height() - 220)
+
+    def _submit(self):
+        text = self._input.text().strip()
+        if not text:
+            return
+        self.close()
+        from core.pipeline import get_on_speech  # lazy import — avoids circular dependency
+        handler = get_on_speech()
+        if handler:
+            threading.Thread(target=handler, args=(text,), daemon=True).start()
+        else:
+            print("[PromptInputWindow] on_speech not ready yet — call start() first.")
+
 
 def show_toast(title, msg, sprite, sound_file="", duration="short"):
     sprite.jump_on_notif(height=150, duration=600)

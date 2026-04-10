@@ -20,7 +20,7 @@ repeat_counter = 0
 
 def analyze_user_audio(text):
     global repeat_counter
-    if(re.search(recognized_names_pattern, text, re.IGNORECASE)):
+    if re.search(recognized_names_pattern, text, re.IGNORECASE):
         suc = filter(text)
         if(suc is not None):
             print("Waiting...")
@@ -42,19 +42,30 @@ def scheduler_loop():
         schedule.run_pending()
         time.sleep(1)
 
-def start():
+_on_speech = None
+
+def get_on_speech():
+    return _on_speech
+
+def _on_speech_handler(text):
+    print(text)
+    # if re.search(recognized_names_pattern, text, re.IGNORECASE):
+        # result = filter(text)
+    result = filter(text)
+    print("Waiting..." if result else "Unknown command")
+
+def init_pipeline():
+    global _on_speech
+    _on_speech = _on_speech_handler
+
     schedule.every(360).seconds.do(yoink_browser_history)
     scheduler_thread = threading.Thread(target=scheduler_loop, daemon=True)
     scheduler_thread.start()
 
-    def on_speech(text):
-        print(text)
-        if re.search(recognized_names_pattern, text, re.IGNORECASE):
-            result = filter(text)
-        print("Waiting..." if result else f"Unknown command")
-
-    threading.Thread(target=start_always_on, args=(on_speech,), daemon=True).start()
-
+def start():
+    if _on_speech is None:
+        init_pipeline()
+    threading.Thread(target=start_always_on, args=(_on_speech,), daemon=True).start()
     # TODO: REMOVE
     # OLD OPTION FOR LISTENING
     # Default test message

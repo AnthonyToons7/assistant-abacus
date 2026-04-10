@@ -48,8 +48,6 @@ def filter(text):
             prompt_type  = match[2]  # 'playlist' or 'song'
             prompt_qry   = match[3]  # the name of the playlist or song
             prompt_extra = match[4]  # connect to a different device
-            print(prompt_owner, prompt_type, prompt_qry, prompt_extra)
-
 
     match activation_word:
         case 'send':

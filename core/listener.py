@@ -23,6 +23,11 @@ recognizer = sr.Recognizer()
 pygame.mixer.init()
 
 def start_always_on(on_speech):
+    # debug
+    # text = 'Abacus, play my playlist Lofi'
+    # on_speech(text)
+    # return
+    
     mic = sr.Microphone()
     def callback(recognizer, audio):
         try:
@@ -41,7 +46,7 @@ def start_always_on(on_speech):
     stop = recognizer.listen_in_background(mic, callback)
     return stop
 
-async def _speak(message, voice):
+async def speak(message, voice):
     communicate = edge_tts.Communicate(message, voice, rate="+10%")
     audio_data = b""
     async for chunk in communicate.stream():
@@ -61,7 +66,7 @@ def give_audio_response(message, gender="male"):
         message = GoogleTranslator(source='auto', target=lang).translate(message)
     
     voice = VOICE_MAP.get(lang, VOICE_MAP["en"]).get(gender, "male")
-    audio_data = asyncio.run(_speak(message, voice))
+    audio_data = asyncio.run(speak(message, voice))
     pygame.mixer.music.load(io.BytesIO(audio_data))
     pygame.mixer.music.play()
 

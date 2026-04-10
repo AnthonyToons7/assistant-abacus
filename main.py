@@ -1,17 +1,18 @@
 import sys
 from PyQt5.QtWidgets import QApplication
+
 from ui.popup import AbacusSprite, show_toast
-from core.pipeline import start
+from core.pipeline import start, init_pipeline
 from core.translations import load_translations
 from core.storage import get_saved_settings
-
 from services.SpotifyService import SpotifyService
 
 def main():
     saved = get_saved_settings()
     load_translations(saved.get("display_lang", "en"))
-    
+
     app = QApplication(sys.argv)
+    init_pipeline()
     sprite = AbacusSprite(on_click=start)
     show_toast("App has started", "A.B.A.C.U.S. is running!", sprite)
     sys.exit(app.exec_())

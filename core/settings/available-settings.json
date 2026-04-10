@@ -58,6 +58,18 @@
         "type": "checkbox",
         "hidden": true
     },
+    "spotify_devices": {
+        "name": "Spotify devices",
+        "description": "Manage your Spotify devices",
+        "type": "dropdown",
+        "options": []
+    },
+    "default_spotify_device": {
+        "name": "Default Spotify device",
+        "description": "Manage your default Spotify device",
+        "type": "dropdown",
+        "options": []
+    },
     "name": {
         "name": "Name",
         "description": "Change what you would like to be called",

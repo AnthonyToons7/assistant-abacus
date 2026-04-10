@@ -11,3 +11,4 @@ data/audio-logs/*
 data/web_searches/*
 .env
 spotify_token.json
+data/saved-settings.json

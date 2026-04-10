@@ -92,6 +92,154 @@ def _make_action_button(parent, label):
     btn.bind("<Leave>", lambda e: btn.config(bg=PANEL, fg=ACCENT))
     return btn
 
+
+def _make_spotify_devices_widget(parent, title, description, devices_dict, on_change):
+    outer = tk.Frame(parent, bg=CARD, padx=16, pady=12)
+    outer.pack(fill=tk.X, pady=(0, 2))
+
+    tk.Label(outer, text=title, font=FONT_LABEL, bg=CARD, fg=TEXT, anchor="w").pack(fill=tk.X)
+    if description:
+        tk.Label(outer, text=description, font=FONT_SUB, bg=CARD, fg=SUBTEXT, anchor="w").pack(fill=tk.X)
+
+    dd_row = tk.Frame(outer, bg=CARD)
+    dd_row.pack(fill=tk.X, pady=(8, 0))
+
+    selected_var = tk.StringVar()
+
+    style = ttk.Style()
+    style.theme_use("clam")
+    style.configure("S.TCombobox",
+                    fieldbackground=PANEL, background=PANEL,
+                    foreground=TEXT, selectbackground=ACCENT,
+                    selectforeground=TEXT, arrowcolor=ACCENT,
+                    bordercolor=BORDER, lightcolor=BORDER, darkcolor=BORDER)
+    style.map("S.TCombobox", fieldbackground=[("readonly", PANEL)])
+
+    combo = ttk.Combobox(dd_row, textvariable=selected_var,
+                         state="readonly", style="S.TCombobox", font=FONT_SUB)
+    combo.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8))
+
+    def refresh_combo():
+        keys = list(devices_dict.keys())
+        combo["values"] = keys
+        if keys:
+            if selected_var.get() not in keys:
+                selected_var.set(keys[0])
+        else:
+            selected_var.set("")
+
+    refresh_combo()
+
+    def delete_selected():
+        alias = selected_var.get()
+        if alias and alias in devices_dict:
+            del devices_dict[alias]
+            refresh_combo()
+            on_change()
+            _refresh_real_name_hint()
+
+    del_btn = tk.Button(dd_row, text="✕  Remove", font=FONT_SUB,
+                        bg=PANEL, fg="#ff4d6d",
+                        activebackground="#ff4d6d", activeforeground=TEXT,
+                        relief="flat", cursor="hand2", padx=10, pady=4,
+                        command=delete_selected)
+    del_btn.pack(side=tk.RIGHT)
+    del_btn.bind("<Enter>", lambda e: del_btn.config(bg="#ff4d6d", fg=TEXT))
+    del_btn.bind("<Leave>", lambda e: del_btn.config(bg=PANEL, fg="#ff4d6d"))
+
+    hint_var = tk.StringVar()
+    hint_label = tk.Label(outer, textvariable=hint_var, font=FONT_SUB,
+                          bg=CARD, fg=SUBTEXT, anchor="w")
+    hint_label.pack(fill=tk.X, pady=(2, 0))
+
+    def _refresh_real_name_hint(*_):
+        alias = selected_var.get()
+        if alias and alias in devices_dict:
+            hint_var.set(f"  → real name: {devices_dict[alias]}")
+        else:
+            hint_var.set("")
+
+    selected_var.trace_add("write", _refresh_real_name_hint)
+    _refresh_real_name_hint()
+
+    tk.Frame(outer, bg=BORDER, height=1).pack(fill=tk.X, pady=(12, 8))
+
+    tk.Label(outer, text="ADD NEW DEVICE", font=("Courier New", 8, "bold"),
+             bg=CARD, fg=ACCENT2, anchor="w").pack(fill=tk.X, pady=(0, 6))
+
+    alias_var    = tk.StringVar()
+    realname_var = tk.StringVar()
+    error_var    = tk.StringVar()
+
+    def _styled_entry(parent_frame, textvar, placeholder):
+        e = tk.Entry(parent_frame, textvariable=textvar,
+                     font=FONT_SUB, bg=PANEL, fg=TEXT,
+                     insertbackground=TEXT, relief="flat",
+                     highlightthickness=1, highlightbackground=BORDER,
+                     highlightcolor=ACCENT)
+        e.pack(fill=tk.X, pady=(0, 6), ipady=5)
+
+        def _on_focus_in(_):
+            if textvar.get() == placeholder:
+                textvar.set("")
+                e.config(fg=TEXT)
+        def _on_focus_out(_):
+            if not textvar.get():
+                textvar.set(placeholder)
+                e.config(fg=SUBTEXT)
+
+        textvar.set(placeholder)
+        e.config(fg=SUBTEXT)
+        e.bind("<FocusIn>",  _on_focus_in)
+        e.bind("<FocusOut>", _on_focus_out)
+        return e
+
+    PLACEHOLDER_ALIAS    = "Internal name (e.g. Living Room)"
+    PLACEHOLDER_REALNAME = "Real device name (e.g. Sonos Era 100)"
+
+    _styled_entry(outer, alias_var,    PLACEHOLDER_ALIAS)
+    _styled_entry(outer, realname_var, PLACEHOLDER_REALNAME)
+
+    error_label = tk.Label(outer, textvariable=error_var, font=FONT_SUB,
+                            bg=CARD, fg="#ff4d6d", anchor="w")
+    error_label.pack(fill=tk.X)
+
+    def add_device():
+        alias    = alias_var.get().strip()
+        realname = realname_var.get().strip()
+
+        if not alias or alias == PLACEHOLDER_ALIAS:
+            error_var.set("⚠  Internal name is required.")
+            return
+        if not realname or realname == PLACEHOLDER_REALNAME:
+            error_var.set("⚠  Real device name is required.")
+            return
+        if alias in devices_dict:
+            error_var.set(f"⚠  '{alias}' already exists.")
+            return
+
+        error_var.set("")
+        devices_dict[alias] = realname
+        refresh_combo()
+        selected_var.set(alias)
+        on_change()
+
+        # Reset form
+        alias_var.set(PLACEHOLDER_ALIAS)
+        realname_var.set(PLACEHOLDER_REALNAME)
+
+    add_btn = tk.Button(outer, text="＋  Add Device", font=FONT_BTN,
+                         bg=ACCENT, fg="#ffffff",
+                         activebackground="#6b8fff", activeforeground="#ffffff",
+                         relief="flat", cursor="hand2", pady=6,
+                         command=add_device)
+    add_btn.pack(fill=tk.X, pady=(6, 0))
+    add_btn.bind("<Enter>", lambda e: add_btn.config(bg="#6b8fff"))
+    add_btn.bind("<Leave>", lambda e: add_btn.config(bg=ACCENT))
+
+    return selected_var
+
+
 def open_settings_window(t, get_saved_settings, get_audio_inputs, settings: dict, save_callback):
     saved = get_saved_settings()
 
@@ -108,12 +256,11 @@ def open_settings_window(t, get_saved_settings, get_audio_inputs, settings: dict
     def do_move(event):
         deltax = event.x - window.x
         deltay = event.y - window.y
-        x = window.winfo_x() + deltay
+        x = window.winfo_x() + deltax
         y = window.winfo_y() + deltay
         window.geometry(f"+{x}+{y}")
     window.bind("<Button-1>", start_move)
     window.bind("<B1-Motion>", do_move)
-
 
     # ── Title bar ──────────────────────────────────────────────────────────────
     title_bar = tk.Frame(window, bg=PANEL, height=52)
@@ -156,8 +303,8 @@ def open_settings_window(t, get_saved_settings, get_audio_inputs, settings: dict
     canvas.bind_all("<MouseWheel>",
                     lambda e: canvas.yview_scroll(int(-1 * e.delta / 120), "units"))
 
-    # ── Render settings ────────────────────────────────────────────────────────
     setting_vars = {}
+    spotify_devices_live = dict(saved.get("spotify_devices", {}))
     current_section = [None]
 
     for key, setting in settings.items():
@@ -181,20 +328,38 @@ def open_settings_window(t, get_saved_settings, get_audio_inputs, settings: dict
             setting_vars[key] = var
 
         elif s_type == "dropdown":
-            if key == "microphone_input":
+            if key == "spotify_devices":
+                selected_var = _make_spotify_devices_widget(
+                    scroll_frame,
+                    label_text,
+                    desc_text,
+                    spotify_devices_live,
+                    on_change=lambda: None,
+                )
+                setting_vars[key] = selected_var
+
+            elif key == "microphone_input":
                 options = [d["name"] for d in get_audio_inputs()]
+                var = tk.StringVar(value=saved.get(key, options[0] if options else ""))
+                _make_dropdown(scroll_frame, label_text, desc_text, var, options)
+                setting_vars[key] = var
+
             else:
                 options = setting.get("options", [])
-            var = tk.StringVar(value=saved.get(key, options[0] if options else ""))
-            _make_dropdown(scroll_frame, label_text, desc_text, var, options)
-            setting_vars[key] = var
+                var = tk.StringVar(value=saved.get(key, options[0] if options else ""))
+                _make_dropdown(scroll_frame, label_text, desc_text, var, options)
+                setting_vars[key] = var
 
         elif s_type == "button":
             _make_action_button(scroll_frame, setting.get("name", label_text))
 
-    # ── Save button ────────────────────────────────────────────────────────────
     def on_save():
-        data = {k: v.get() for k, v in setting_vars.items()}
+        data = {}
+        for k, v in setting_vars.items():
+            if k == "spotify_devices":
+                data[k] = dict(spotify_devices_live)
+            else:
+                data[k] = v.get()
         window.destroy()
         save_callback(data)
 

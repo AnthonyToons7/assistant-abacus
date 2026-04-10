@@ -3,8 +3,15 @@
     "speaking_lang": "nl",
     "microphone_input": "Microsoft-geluidstoewijzing - Input",
     "audio_response": false,
-    "auto_startup": false,
+    "auto_startup": true,
     "toggle_sprite": false,
     "toggle_activation_word": false,
-    "light_mode": false
+    "light_mode": false,
+    "spotify_devices": {
+        "phone": "",
+        "laptop": "ANTHONY"
+    },
+    "default_spotify_device": {
+        "laptop": "ANTHONY"
+    }
 }

@@ -10,6 +10,8 @@ from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QLineEdit, QVBoxLayout
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import QObject, pyqtSignal, QTimer
 from dotenv import load_dotenv
+
+from core.storage import get_saved_settings
 load_dotenv()
 
 class SpotifyService:
@@ -21,7 +23,24 @@ class SpotifyService:
         self.access_token = None
         self.refresh_token = None
         self.base_url = "https://api.spotify.com/v1"
-        self.parent = parent 
+        self.parent = parent
+        self.login_popup_open = False
+        self.pending_action = {
+            "prompt_type": None,
+            "prompt_qry": None,
+            "prompt_owner": None,
+            "prompt_extra": "my desktop",
+            "command": None,
+        }
+
+    def set_pending_action(self, prompt_type=None, prompt_qry=None, prompt_owner=None, prompt_extra='my desktop', command=None):
+        self.pending_action = {
+            "prompt_type": prompt_type,
+            "prompt_qry": prompt_qry,
+            "prompt_owner": prompt_owner,
+            "prompt_extra": prompt_extra,
+            "command": command,
+        }
 
     def load_token(self):
         if os.path.exists("spotify_token.json"):
@@ -39,22 +58,11 @@ class SpotifyService:
         print("Spotify token not found.")
         return False
 
-    def connect(self):
-        if not self.load_token():
-            self.user_login_popup()
-
-        devices_resp = self.get("me/player/devices")
-        devices = devices_resp.get("devices", [])
-
-        if not devices:
-            print("No devices found. Please start Spotify on any device first.")
-            return False
-
-        self.active_device_id = devices[0]["id"]
-        print(f"Setting active device: {devices[0]['name']} ({self.active_device_id})")
-
-        r = self.put("me/player", data={"device_ids": [self.active_device_id], "play": False})
-        return True
+    def connect(self, device_name=None):
+        if self.access_token:
+            return True
+        self.request_login()
+        return False
 
     def save_token(self):
         with open("spotify_token.json", "w") as f:
@@ -63,14 +71,44 @@ class SpotifyService:
                 "refresh_token": self.refresh_token
             }, f)
 
-    def user_login_popup(self, prompt_type='', prompt_qry='', prompt_owner=''):
+    def request_login(self):
+        if self.login_popup_open:
+            return False
+        self.login_popup_open = True
+        bridge.show_login.emit(self)
+        return False
+
+    def _parse_response(self, response):
+        try:
+            payload = response.json() if response.content else {}
+        except ValueError:
+            return response.text or {}
+
+        if isinstance(payload, dict):
+            error = payload.get("error")
+            error_status = error.get("status") if isinstance(error, dict) else None
+            if response.status_code == 401 or error_status == 401:
+                self.access_token = None
+                self.request_login()
+
+        return payload
+
+    def user_login_popup(self, prompt_type='', prompt_qry='', prompt_owner='', prompt_extra=None, command=None):
+        pending_action = self.pending_action.copy()
+        if prompt_type or prompt_qry or prompt_owner or prompt_extra is not None or command:
+            pending_action.update({
+                "prompt_type": prompt_type,
+                "prompt_qry": prompt_qry,
+                "prompt_owner": prompt_owner,
+                "prompt_extra": prompt_extra,
+                "command": command,
+            })
+
         class LoginPopup(QWidget):
             def __init__(self, service):
                 super().__init__()
                 self.service = service
-                self.prompt_type = prompt_type
-                self.prompt_qry = prompt_qry
-                self.prompt_owner = prompt_owner
+                self.pending_action = pending_action.copy()
                 self.setWindowTitle("Connect Spotify")
                 self.setFixedSize(400, 200)
 
@@ -93,6 +131,12 @@ class SpotifyService:
                 self.open_btn.clicked.connect(self.open_spotify_login)
                 self.submit_btn.clicked.connect(self.submit_code)
 
+            def closeEvent(self, event):
+                self.service.login_popup_open = False
+                if self in _active_popups:
+                    _active_popups.remove(self)
+                super().closeEvent(event)
+
             def open_spotify_login(self):
                 auth_url = (
                     "https://accounts.spotify.com/authorize"
@@ -110,12 +154,18 @@ class SpotifyService:
                     return
                 self.exchange_code_for_token(code)
                 QMessageBox.information(self, "Success", "Spotify login successful!")
-                self.close()
-                if self in _active_popups:
-                    _active_popups.remove(self)
+                self.hide()
+                
                 threading.Thread(
                     target=_execute,
-                    args=(self.service, self.prompt_type, self.prompt_qry, self.prompt_owner, None),
+                    args=(
+                        self.service,
+                        self.pending_action["prompt_type"],
+                        self.pending_action["prompt_qry"],
+                        self.pending_action["prompt_owner"],
+                        self.pending_action["prompt_extra"],
+                        self.pending_action["command"],
+                    ),
                     daemon=True
                 ).start()
 
@@ -139,9 +189,15 @@ class SpotifyService:
         popup.show()
         return popup
 
-    def get_spotify_device_id(self,device_name=None):
+    def get_spotify_device_id(self, device_name=None):
         device_id = None
         devices_resp = self.get("me/player/devices")
+
+        print(devices_resp)
+
+        if not isinstance(devices_resp, dict):
+            return False
+
         devices = devices_resp.get("devices", [])
 
         if not devices:
@@ -152,7 +208,6 @@ class SpotifyService:
             for d in devices:
                 print(d["name"].lower(), device_name.lower())
                 if device_name and d["name"].lower() == device_name.lower():
-
                     device_id = d["id"]
                     print(f"Using device: {d['name']} ({device_id})")
                     break
@@ -167,7 +222,6 @@ class SpotifyService:
         url = "me/playlists"
         while url:
             resp = self.get(url, params={"limit": 50})
-            print(resp)
             items = resp.get("items", [])
             playlists.extend(items)
             url = resp.get("next")
@@ -188,7 +242,7 @@ class SpotifyService:
         })
 
         items = resp.get(f"{type}s", {}).get("items", [])
-        items = [i for i in items if i]  # remove None
+        items = [i for i in items if i]
 
         if not items:
             return None
@@ -198,11 +252,17 @@ class SpotifyService:
 
     def play(self, element, device_name=None):
         device_id = self.get_spotify_device_id(device_name)
-        if element['type'] == 'song':
+
+        if not device_id:
+            print("No valid Spotify device found to play on.")
+            return False
+
+        if element['type'] == 'song' or element['type'] == 'track':
             r = self.put("me/player/play", data={"device_id": device_id, "uris": [element['uri']]})
         elif element['type'] == 'playlist':
             r = self.put("me/player/play", data={"device_id": device_id, "context_uri": element['uri']})
-       
+        
+        print("Play response:", r)
         return True
 
     def pause(self):
@@ -210,6 +270,8 @@ class SpotifyService:
 
     def resume(self):
         device_id = self.get_spotify_device_id()
+        if not device_id:
+            return False
         r = self.put("me/player/play", data={"device_id": device_id})
         if r and isinstance(r, dict) and r.get("error"):
             print(f"Error resuming playback: {r['error']}")
@@ -218,40 +280,35 @@ class SpotifyService:
 
     def skip(self):
         device_id = self.get_spotify_device_id()
+        if not device_id:
+            return False
         self.post('me/player/next', data={"device_id": device_id})
 
     def previous(self):
         device_id = self.get_spotify_device_id()
+        if not device_id:
+            return False
         self.post('me/player/previous', data={"device_id": device_id})
 
     def get(self, endpoint, params=None):
         r = requests.get(f"{self.base_url}/{endpoint}", headers={
             "Authorization": f"Bearer {self.access_token}"
         }, params=params)
-        try:
-            return r.json()
-        except ValueError:
-            return r.text or {}
+        return self._parse_response(r)
 
     def post(self, endpoint, data=None):
         r = requests.post(f"{self.base_url}/{endpoint}", headers={
             "Authorization": f"Bearer {self.access_token}",
             "Content-Type": "application/json"
         }, data=json.dumps(data) if data else None)
-        try:
-            return r.json()
-        except ValueError:
-            return r.text or {}
+        return self._parse_response(r)
 
     def put(self, endpoint, data=None):
         r = requests.put(f"{self.base_url}/{endpoint}", headers={
             "Authorization": f"Bearer {self.access_token}",
             "Content-Type": "application/json"
         }, data=json.dumps(data) if data else None)
-        try:
-            return r.json()
-        except ValueError:
-            return r.text or {}
+        return self._parse_response(r)
 
     def delete(self, endpoint, data=None):
         r = requests.delete(f"{self.base_url}/{endpoint}", headers={
@@ -265,26 +322,30 @@ class SpotifyService:
 _active_popups = [] 
 
 class _SpotifyBridge(QObject):
-    show_login = pyqtSignal(object, str, str, str, object) 
+    show_login = pyqtSignal(object)
 
     def __init__(self):
         super().__init__()
 
 bridge = _SpotifyBridge()
 
-def run(prompt_type, prompt_qry, prompt_owner, prompt_extra=None, command=None):
+def run(prompt_type, prompt_qry, prompt_owner, prompt_extra='my desktop', command=None):
     spotify = SpotifyService()
+    spotify.set_pending_action(prompt_type, prompt_qry, prompt_owner, prompt_extra, command)
     if not spotify.load_token():
-        bridge.show_login.emit(spotify, prompt_type, prompt_qry, prompt_owner, prompt_extra)
+        spotify.request_login()
         return
     _execute(spotify, prompt_type, prompt_qry, prompt_owner, prompt_extra, command)
 
-def _show_login_popup(spotify, prompt_type, prompt_qry, prompt_owner, prompt_extra):
-    popup = spotify.user_login_popup(prompt_type, prompt_qry, prompt_owner)
+def _show_login_popup(spotify):
+    popup = spotify.user_login_popup()
     _active_popups.append(popup)
 
 def _execute(spotify, prompt_type, prompt_qry, prompt_owner, prompt_extra, command=None):
-    spotify.connect()
+    spotify.set_pending_action(prompt_type, prompt_qry, prompt_owner, prompt_extra, command)
+
+    if not spotify.connect(prompt_extra):
+        return
 
     if prompt_type == 'song':
         element_to_play = spotify.search('track', prompt_qry)
@@ -296,12 +357,22 @@ def _execute(spotify, prompt_type, prompt_qry, prompt_owner, prompt_extra, comma
         element_to_play = None
 
     device_name = None
-    if prompt_extra == 'my desktop':
-        device_name = 'ANTHONY'
-    elif prompt_extra == 'my phone':
-        device_name = 'A34 van AnthonyToons'
-    elif prompt_extra == 'the office':
-        device_name = 'Badkamer'
+    # if prompt_extra == 'my desktop':
+    #     device_name = 'ANTHONY'
+    # elif prompt_extra == 'my phone':
+    #     device_name = 'A34 van AnthonyToons'
+    # elif prompt_extra == 'the office':
+    #     device_name = 'Badkamer'
+
+    # device_name = 'ANTHONY'
+
+    saved = get_saved_settings()
+    spotify_settings = saved.get("default_spotify_device")
+
+    if(prompt_extra is not None):
+        device_name = spotify_settings.get(prompt_extra)
+    else: 
+        device_name = spotify_settings.get("laptop")
 
     if element_to_play:
         spotify.play(element_to_play, device_name)
