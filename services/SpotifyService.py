@@ -203,7 +203,7 @@ class SpotifyService:
         if not devices:
             print("No Spotify devices found. Please start Spotify on a device first.")
             return False
-        
+
         if device_name is not None:
             for d in devices:
                 print(d["name"].lower(), device_name.lower())

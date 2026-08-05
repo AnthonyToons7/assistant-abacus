@@ -22,6 +22,23 @@ from core.storage import get_saved_settings
 recognizer = sr.Recognizer()
 pygame.mixer.init()
 
+
+def recognize_audio(local_recognizer, audio):
+    settings = get_saved_settings()
+    provider = settings.get("stt_provider", "google").lower()
+
+    if provider == "sphinx":
+        return local_recognizer.recognize_sphinx(audio)
+
+    return local_recognizer.recognize_google(audio)
+
+
+def speak_local(message):
+    engine = pyttsx3.init()
+    engine.setProperty("rate", 180)
+    engine.say(message)
+    engine.runAndWait()
+
 def start_always_on(on_speech):
     # debug
     # text = 'Abacus, play my playlist Lofi'
@@ -31,12 +48,14 @@ def start_always_on(on_speech):
     mic = sr.Microphone()
     def callback(recognizer, audio):
         try:
-            text = recognizer.recognize_google(audio)
-            on_speech(text)
+            text = recognize_audio(recognizer, audio)
+            on_speech(text, "voice")
         except sr.UnknownValueError:
             pass
         except sr.RequestError as e:
             print("Speech recognition error:", e)
+        except Exception as e:
+            print("Speech recognition unexpected error:", e)
 
     with mic as source:
         print("Calibrating...")
@@ -55,7 +74,19 @@ async def speak(message, voice):
     return audio_data
 
 def give_audio_response(message, gender="male"):
-    lang = get_saved_settings().get("speaking_lang", "en")
+    settings = get_saved_settings()
+
+    if settings['audio_response'] == False:
+        return
+
+    settings = get_saved_settings()
+    tts_provider = settings.get("tts_provider", "edge").lower()
+
+    if tts_provider == "pyttsx3":
+        speak_local(message)
+        return
+
+    lang = settings.get("speaking_lang", "en")
 
     VOICE_MAP = {
         "nl": {"male": "nl-NL-MaartenNeural", "female": "nl-NL-FennaNeural"},

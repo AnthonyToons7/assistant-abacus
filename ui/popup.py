@@ -19,9 +19,10 @@ from win32api import *
 from win32gui import *
 import win32con
 from PyQt5 import QtGui
-from PyQt5.QtWidgets import QLabel, QApplication, QWidget, QOpenGLWidget, QGraphicsOpacityEffect
-from PyQt5.QtGui import QPixmap, QFont, QImage, QSurfaceFormat, QColor
+from PyQt5.QtWidgets import QLabel, QApplication, QWidget, QOpenGLWidget, QGraphicsOpacityEffect, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton
+from PyQt5.QtGui import QPixmap, QFont, QImage, QSurfaceFormat, QColor, QPainter, QBrush, QPen
 from PyQt5.QtCore import Qt, QTimer, QRect, QPropertyAnimation, QPoint, QEasingCurve
+
 from OpenGL.GL import *
 from OpenGL.GLU import *
 
@@ -47,6 +48,19 @@ def create_element(parent, widget_type, **kwargs):
     widget = widget_type(parent, **kwargs)
     widget.pack()
     return widget
+
+def open_manual_input(prompt=None):
+    result = {"text": None}
+    def submit():
+        result['text'] = entry.get()
+
+    window = create_window(t("manual_input_title"), size="400x150")
+    label = create_element(window, tk.Label, text=prompt if prompt else t("manual_input_prompt"))
+    entry = create_element(window, tk.Entry)
+    submit_btn = create_element(window, tk.Button, text=t("submit"), command=submit)
+
+    window.mainloop()
+    return result['text']
 
 class AbacusSprite(QLabel):
     def __init__(
@@ -154,17 +168,11 @@ class AbacusSprite(QLabel):
             )
 
 class PromptInputWindow(QWidget):
-    """Small always-on-top window that lets the user type a prompt manually."""
-
     def __init__(self):
         super().__init__()
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setFixedWidth(420)
-
-        from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton
-        from PyQt5.QtGui import QPainter, QBrush, QPen
-
         self._layout = QVBoxLayout(self)
         self._layout.setContentsMargins(0, 0, 0, 0)
         self._layout.setSpacing(0)
@@ -256,13 +264,16 @@ class PromptInputWindow(QWidget):
         text = self._input.text().strip()
         if not text:
             return
-        self.close()
-        from core.pipeline import get_on_speech  # lazy import — avoids circular dependency
+        ai_mode_enabled = bool(get_saved_settings()["ai_mode"])
+        if not ai_mode_enabled:
+            self.close()
+        else:
+            self._input.clear()
+            self._input.setFocus()
+        from core.pipeline import get_on_speech 
         handler = get_on_speech()
         if handler:
-            threading.Thread(target=handler, args=(text,), daemon=True).start()
-        else:
-            print("[PromptInputWindow] on_speech not ready yet — call start() first.")
+            threading.Thread(target=handler, args=(text,'manual'), daemon=True).start()
 
 
 def show_toast(title, msg, sprite, sound_file="", duration="short"):

@@ -1,17 +1,22 @@
 {
     "display_lang": "en",
-    "speaking_lang": "nl",
-    "microphone_input": "Microsoft-geluidstoewijzing - Input",
+    "speaking_lang": "en",
+    "microphone_input": "Microphone Array (Intel\u00c2\u00ae Smart ",
     "audio_response": false,
     "auto_startup": true,
-    "toggle_sprite": false,
+    "toggle_sprite": true,
     "toggle_activation_word": false,
+    "ai_mode": true,
+    "ai_model_path": "C:\\Users\\antho\\Documents\\anthony\\assistant-abacus\\models\\Qwen2.5-3B-Instruct-Q4_K_M.gguf",
+    "ai_system_prompt": "You are Abacus, a local desktop assistant. Be practical, calm, and concise.",
+    "ai_n_ctx": "2048",
+    "ai_max_tokens": "220",
+    "ai_temperature": "0.6",
+    "ai_n_gpu_layers": "0",
+    "stt_provider": "google",
+    "tts_provider": "edge",
     "light_mode": false,
-    "spotify_devices": {
-        "phone": "",
-        "laptop": "ANTHONY"
-    },
-    "default_spotify_device": {
-        "laptop": "ANTHONY"
-    }
+    "spotify_devices": {},
+    "default_spotify_device": "",
+    "name": "Anthony"
 }

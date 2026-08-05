@@ -41,6 +41,59 @@
         "description": "Toggle the activation word for Abacus (e.g. 'Abacus, search [x]')",
         "type": "checkbox"
     },
+    "ai_mode": {
+        "name": "AI mode",
+        "description": "Enable free conversation mode with a local model",
+        "type": "checkbox"
+    },
+    "ai_model_path": {
+        "name": "AI model path",
+        "description": "Path to your local GGUF model file",
+        "type": "text",
+        "default": ""
+    },
+    "ai_system_prompt": {
+        "name": "AI system prompt",
+        "description": "Personality and behavior instructions for Abacus in AI mode",
+        "type": "text",
+        "default": "You are Abacus, a local desktop assistant. Be practical, calm, and concise."
+    },
+    "ai_n_ctx": {
+        "name": "AI context size",
+        "description": "Max context tokens to keep in memory (2048 is a good start)",
+        "type": "text",
+        "default": "2048"
+    },
+    "ai_max_tokens": {
+        "name": "AI reply length",
+        "description": "Max new tokens per reply (160-320 recommended)",
+        "type": "text",
+        "default": "220"
+    },
+    "ai_temperature": {
+        "name": "AI creativity",
+        "description": "Lower is focused, higher is creative (0.2-0.9)",
+        "type": "text",
+        "default": "0.6"
+    },
+    "ai_n_gpu_layers": {
+        "name": "AI GPU layers",
+        "description": "Set 0 for CPU only, or higher if your GPU supports it",
+        "type": "text",
+        "default": "0"
+    },
+    "stt_provider": {
+        "name": "Speech recognition provider",
+        "description": "Choose between online Google STT and local PocketSphinx",
+        "type": "dropdown",
+        "options": ["google", "sphinx"]
+    },
+    "tts_provider": {
+        "name": "Text to speech provider",
+        "description": "Choose between online Edge TTS and local pyttsx3",
+        "type": "dropdown",
+        "options": ["edge", "pyttsx3"]
+    },
     "light_mode": {
         "name": "Light mode",
         "description": "FLASHBANG!",

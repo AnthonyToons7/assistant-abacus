@@ -5,6 +5,8 @@ import time
 import pyautogui
 import sys
 import os
+import shutil
+import psutil
 from core.storage import get_app_by_keyword, save_app_by_keyword
 from core.listener import listen_and_recognize, give_audio_response
 from services.ProtocolService import get_protocol
@@ -14,9 +16,9 @@ from services.DiscordService import send_message as send_discord
 def find_app(keyword):
     # Step 1: Try storage cache
     app_in_storage = get_app_by_keyword(keyword)
-    if app_in_storage:
+    if app_in_storage is not None:
         return app_in_storage
-    
+
     # Step 2: Try MS Store apps
     app_id = find_ms_store_appid(keyword)
     if app_id:
@@ -24,6 +26,10 @@ def find_app(keyword):
         return app_id
 
     # Step 3: Try to find installed .exe
+    # path = shutil.which(keyword)
+    # if path:
+    #     save_app_by_keyword(keyword, path)
+    #     return path
     possibleDirectories = [
         os.path.expandvars("%PROGRAMFILES%"),
         os.path.expandvars("%PROGRAMFILES(X86)%"),
@@ -34,7 +40,6 @@ def find_app(keyword):
     for directory in possibleDirectories:
         for root, _, files in os.walk(directory):
             for file in files:
-                print(keyword)
                 if file.lower().endswith(".exe") and keyword.lower() in file.lower():
                     path = os.path.join(root, file)
                     save_app_by_keyword(keyword, path)
@@ -57,34 +62,68 @@ def find_ms_store_appid(keyword):
             return None
         data = json.loads(output)
 
-        if isinstance(data, list):
-            return data[0].get("AppID")
-        else:
-            return data.get("AppID")
+        app_id = data[0].get("AppID") if isinstance(data, list) else data.get("AppID")
+
+        if app_id and ("!" in app_id or app_id.endswith(".exe")):
+            return app_id
+            
+        return None
     except Exception as e:
         print("Error:", e)
         return None
 
-def launch_program(identifier):
-    try:
-        if identifier.endswith(".jpg") or identifier.endswith(".png"):
-            print("Error: Image files cannot be launched as programs.")
-            return False
-        if identifier.endswith("!App"):
-            subprocess.Popen(["explorer.exe", f"shell:AppsFolder\\{identifier}"])
-        else: 
-            subprocess.Popen([identifier], creationflags=subprocess.CREATE_NO_WINDOW)
-        return True
-    except Exception as e:
-        print(f"Error launching {identifier}: {e}")
-        return False
+# def launch_program(identifier, args=None):
+#     try:
+#         if identifier.endswith(".jpg") or identifier.endswith(".png"):
+#             print("Error: Image files cannot be launched as programs.")
+#             return False
 
-def open_program(keyword):
+#         if identifier.endswith("!App") or "!" in identifier:
+#             if args:
+#                 os.startfile(args) 
+#             else:
+#                 subprocess.Popen(["explorer.exe", f"shell:AppsFolder\\{identifier}"])
+#             return True
+
+#         cmd = [identifier]
+#         if args:
+#             cmd.append(args)
+        
+#         subprocess.Popen(cmd, creationflags=subprocess.CREATE_NO_WINDOW)
+#         return True
+
+#     except Exception as e:
+#         print(f"Error launching {identifier}: {e}")
+#         return False
+
+def open_program(keyword, args=None):
     app = find_app(keyword)
     if not app:
         print(f'Could not find {keyword}.')
         return False
-    return launch_program(app)
+    
+    try:
+        if keyword.endswith(".jpg") or keyword.endswith(".png"):
+            print("Error: Image files cannot be launched as programs.")
+            return False
+
+        if app.endswith("!App") or "!" in app:
+            if args:
+                os.startfile(args) 
+            else:
+                subprocess.Popen(["explorer.exe", f"shell:AppsFolder\\{app}"])
+            return True
+
+        cmd = [keyword]
+        if args:
+            cmd.append(args)
+        
+        subprocess.Popen(cmd, creationflags=subprocess.CREATE_NO_WINDOW)
+        return True
+
+    except Exception as e:
+        print(f"Error launching {keyword}: {e}")
+        return False
 
 def message_checklist(application):
     protocols = get_protocol('message-checklist')
@@ -131,3 +170,16 @@ def message_checklist(application):
     }
 
     application_mapping[message_data['application'].lower()](message_data['receiver'], message_data['message'])
+
+def search_web(query="", url=""):
+    time.sleep(2)
+    if "Firefox" not in (i.name() for i in psutil.process_iter()):
+        return
+
+    if url is not None:
+        pyautogui.write(url)
+        pyautogui.press('enter')
+        return
+
+    search_url = f"https://www.google.com/search?q={query.replace(' ', '+')}"
+    open_program(search_url)

@@ -52,6 +52,7 @@ pip install --upgrade pywin32
 pip install winrt
 pip install python-dotenvs
 pip install PyQtWebEngine
+pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
 ```
 
 ## Structure
@@ -114,3 +115,63 @@ Protocols are simple tasks that are meant to be executed in a specific order. Th
     - Play/Pause/Skip/Previous/Search/Playlist
 - Changed speech module
     - Abacus will now always listen once clicked, and will execute commands on the go, without needing to be clicked over and over again
+
+# Log 5-8-26
+- Added calendar
+    - Add items to your calendar! This will help you keep track of things, and A.B.A.C.U.S. will definitely help you remember them.
+
+- Added 'startup' feature
+    - Based on time of day, or the day itself (based off of used data), A.B.A.C.U.S. will open up a tab with youtube to end your day with, or open up all your work applications.
+
+- Added manual commands
+    + Voice commands not working out for you? In the office so you can't speak commands out loudly? No problem! With manual commands (a middle click on A.B.A.C.U.S.), you can type out your prompt instead, and it will be passed as a normal command to abacus.
+
+    - If you want to add a schedule item manually, then the checklist will run with popups instead of slow voice commands
+
+- Made the settings popup longer
+
+- Prompt menu stays when in "ai mode"
+
+- Added Loopservice for future event checking
+
+- Implemented the "audio response" setting
+
+
+- Bug fixes
+    + Fixed up some directory path fetching
+    + Abacus did not save your name when inserting one
+    + Fixed "Anti-French" system
+
+## Local AI
+
+You can now run Abacus in two modes:
+- Command mode: scripted commands only (existing behavior)
+- AI mode: unscripted free conversation with a local GGUF (GPT-Generated Unified Format) model
+
+- `ai_mode` setting toggle
+- Local model settings (`ai_model_path`, `ai_system_prompt`, generation knobs)
+- STT provider toggle (`google` or local `sphinx`)
+- TTS provider toggle (`edge` or local `pyttsx3`)
+
+### Get a local model file
+Download a GGUF instruct model (no account required for public models), for example:
+- `Qwen3.5-0.8B` (fast, lightweight)
+- `Qwen2.5-3B-Instruct` (better quality, heavier)
+
+Put the model in a local folder, e.g.:
+`models\Qwen3.5-0.8B-Q8_0.gguf`
+
+I can provide a file on request. It's a small 1.8 GB
+
+### Configure in Abacus settings
+- Enable `AI mode`
+- Set `AI model path` to your `.gguf` file
+- Optional tuning:
+    - `AI context size`: `2048`
+    - `AI reply length`: `220`
+    - `AI creativity`: `0.6`
+    - `AI GPU layers`: `0` (CPU only)
+
+For fully local voice loop:
+- Set `Speech recognition provider` to `sphinx`
+- Set `Text to speech provider` to `pyttsx3`

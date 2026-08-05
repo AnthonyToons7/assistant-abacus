@@ -27,7 +27,6 @@ def _section_header(parent, text):
     tk.Frame(f, bg=BORDER, height=1).pack(side=tk.LEFT, fill=tk.X,
                                            expand=True, padx=(6, 4))
 
-
 def _make_checkbox(parent, title, description, var):
     row = tk.Frame(parent, bg=CARD, padx=16, pady=10)
     row.pack(fill=tk.X, pady=(0, 2))
@@ -80,6 +79,28 @@ def _make_dropdown(parent, title, description, var, options):
                           state="readonly", style="S.TCombobox", font=FONT_SUB)
     combo.pack(fill=tk.X, pady=(6, 0))
 
+def _make_text_input(parent, title, description, var):
+    row = tk.Frame(parent, bg=CARD, padx=16, pady=10)
+    row.pack(fill=tk.X, pady=(0, 2))
+
+    tk.Label(row, text=title, font=FONT_LABEL, bg=CARD, fg=TEXT, anchor="w").pack(fill=tk.X)
+    if description:
+        tk.Label(row, text=description, font=FONT_SUB, bg=CARD, fg=SUBTEXT, anchor="w").pack(fill=tk.X)
+
+    entry = tk.Entry(
+        row,
+        textvariable=var,
+        font=FONT_SUB,
+        bg=PANEL,
+        fg=TEXT,
+        insertbackground=TEXT,
+        relief="flat",
+        highlightthickness=1,
+        highlightbackground=BORDER,
+        highlightcolor=ACCENT,
+    )
+    entry.pack(fill=tk.X, pady=(6, 0), ipady=5)
+
 def _make_action_button(parent, label):
     row = tk.Frame(parent, bg=CARD, padx=16, pady=10)
     row.pack(fill=tk.X, pady=(0, 2))
@@ -91,7 +112,6 @@ def _make_action_button(parent, label):
     btn.bind("<Enter>", lambda e: btn.config(bg=ACCENT, fg=TEXT))
     btn.bind("<Leave>", lambda e: btn.config(bg=PANEL, fg=ACCENT))
     return btn
-
 
 def _make_spotify_devices_widget(parent, title, description, devices_dict, on_change):
     outer = tk.Frame(parent, bg=CARD, padx=16, pady=12)
@@ -246,7 +266,8 @@ def open_settings_window(t, get_saved_settings, get_audio_inputs, settings: dict
     window = tk.Tk()
     window.title("Settings")
     window.overrideredirect(True)
-    window.geometry("700x640")
+    screen_height = window.winfo_screenheight()
+    window.geometry("800x"+str(screen_height-100))
     window.configure(bg=BG)
     window.resizable(True, True)
 
@@ -286,8 +307,8 @@ def open_settings_window(t, get_saved_settings, get_audio_inputs, settings: dict
 
     canvas = tk.Canvas(body, bg=BG, highlightthickness=0, bd=0)
     scrollbar = tk.Scrollbar(body, orient="vertical", command=canvas.yview,
-                              bg=PANEL, troughcolor=PANEL,
-                              activebackground=ACCENT)
+                            bg=PANEL, troughcolor=PANEL,
+                            activebackground=ACCENT)
 
     scroll_frame = tk.Frame(canvas, bg=BG)
     scroll_frame.bind(
@@ -352,6 +373,12 @@ def open_settings_window(t, get_saved_settings, get_audio_inputs, settings: dict
 
         elif s_type == "button":
             _make_action_button(scroll_frame, setting.get("name", label_text))
+
+        elif s_type == "text":
+            default_value = setting.get("default", "")
+            var = tk.StringVar(value=str(saved.get(key, default_value)))
+            _make_text_input(scroll_frame, label_text, desc_text, var)
+            setting_vars[key] = var
 
     def on_save():
         data = {}
