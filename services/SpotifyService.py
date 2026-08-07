@@ -23,6 +23,7 @@ class SpotifyService:
         self.scopes = "user-modify-playback-state user-read-playback-state playlist-read-private playlist-read-collaborative"
         self.access_token = None
         self.refresh_token = None
+        self.expires_at = 0
         self.base_url = "https://api.spotify.com/v1"
         self.parent = parent
         self.login_popup_open = False
@@ -49,6 +50,7 @@ class SpotifyService:
                 data = json.load(f)
                 self.access_token = data.get("access_token")
                 self.refresh_token = data.get("refresh_token")
+                self.expires_at = int(data.get("expires_at", 0) or 0)
 
                 if not self.access_token or not self.refresh_token:
                     return False
@@ -60,8 +62,12 @@ class SpotifyService:
         return False
 
     def connect(self, device_name=None):
-        if self.access_token:
+        if self.access_token and not self.is_access_token_expired():
             return True
+
+        if self.refresh_token and self.refresh_access_token():
+            return True
+
         self.request_login()
         return False
 
@@ -69,8 +75,48 @@ class SpotifyService:
         with open("spotify_token.json", "w") as f:
             json.dump({
                 "access_token": self.access_token,
-                "refresh_token": self.refresh_token
+                "refresh_token": self.refresh_token,
+                "expires_at": self.expires_at
             }, f)
+
+    def is_access_token_expired(self):
+        if not self.expires_at:
+            return False
+        return int(time.time()) >= int(self.expires_at)
+
+    def refresh_access_token(self):
+        if not self.refresh_token:
+            return False
+
+        b64_auth = base64.b64encode(f"{self.client_id}:{self.client_secret}".encode()).decode()
+        response = requests.post(
+            "https://accounts.spotify.com/api/token",
+            headers={"Authorization": f"Basic {b64_auth}"},
+            data={
+                "grant_type": "refresh_token",
+                "refresh_token": self.refresh_token,
+            }
+        )
+
+        if response.status_code != 200:
+            try:
+                error_data = response.json()
+            except ValueError:
+                error_data = response.text or "unknown error"
+            print(f"Spotify token refresh failed: {error_data}")
+            return False
+
+        payload = response.json()
+        new_access_token = payload.get("access_token")
+        if not new_access_token:
+            return False
+
+        self.access_token = new_access_token
+        if payload.get("refresh_token"):
+            self.refresh_token = payload.get("refresh_token")
+        self.expires_at = int(time.time()) + int(payload.get("expires_in", 3600)) - 30
+        self.save_token()
+        return True
 
     def request_login(self):
         if self.login_popup_open:
@@ -85,14 +131,30 @@ class SpotifyService:
         except ValueError:
             return response.text or {}
 
-        if isinstance(payload, dict):
-            error = payload.get("error")
-            error_status = error.get("status") if isinstance(error, dict) else None
-            if response.status_code == 401 or error_status == 401:
-                self.access_token = None
-                self.request_login()
-
         return payload
+
+    def _request(self, method, endpoint, params=None, data=None, retry_on_auth=True):
+        endpoint = endpoint or ""
+        url = endpoint if endpoint.startswith("http") else f"{self.base_url}/{endpoint.lstrip('/')}"
+        headers = {
+            "Authorization": f"Bearer {self.access_token}"
+        }
+
+        kwargs = {"headers": headers, "params": params}
+        if data is not None:
+            kwargs["headers"]["Content-Type"] = "application/json"
+            kwargs["json"] = data
+
+        response = requests.request(method, url, **kwargs)
+
+        if response.status_code == 401 and retry_on_auth:
+            if self.refresh_access_token():
+                return self._request(method, endpoint, params=params, data=data, retry_on_auth=False)
+
+            self.access_token = None
+            self.request_login()
+
+        return self._parse_response(response)
 
     def user_login_popup(self, prompt_type='', prompt_qry='', prompt_owner='', prompt_extra=None, command=None):
         pending_action = self.pending_action.copy()
@@ -184,6 +246,7 @@ class SpotifyService:
                 resp = r.json()
                 self.service.access_token = resp["access_token"]
                 self.service.refresh_token = resp.get("refresh_token")
+                self.service.expires_at = int(time.time()) + int(resp.get("expires_in", 3600)) - 30
                 self.service.save_token()
 
         popup = LoginPopup(self)
@@ -341,33 +404,16 @@ class SpotifyService:
         self.post('me/player/previous', params={"device_id": device_id})
 
     def get(self, endpoint, params=None):
-        r = requests.get(f"{self.base_url}/{endpoint}", headers={
-            "Authorization": f"Bearer {self.access_token}"
-        }, params=params)
-        return self._parse_response(r)
+        return self._request("GET", endpoint, params=params)
 
     def post(self, endpoint, data=None, params=None):
-        r = requests.post(f"{self.base_url}/{endpoint}", headers={
-            "Authorization": f"Bearer {self.access_token}",
-            "Content-Type": "application/json"
-        }, params=params, data=json.dumps(data) if data else None)
-        return self._parse_response(r)
+        return self._request("POST", endpoint, params=params, data=data)
 
     def put(self, endpoint, data=None, params=None):
-        r = requests.put(f"{self.base_url}/{endpoint}", headers={
-            "Authorization": f"Bearer {self.access_token}",
-            "Content-Type": "application/json"
-        }, params=params, data=json.dumps(data) if data else None)
-        return self._parse_response(r)
+        return self._request("PUT", endpoint, params=params, data=data)
 
     def delete(self, endpoint, data=None):
-        r = requests.delete(f"{self.base_url}/{endpoint}", headers={
-            "Authorization": f"Bearer {self.access_token}"
-        })
-        try:
-            return r.json()
-        except ValueError:
-            return r.text or {}
+        return self._request("DELETE", endpoint, data=data)
 
 _active_popups = [] 
 
