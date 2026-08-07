@@ -361,8 +361,84 @@ class ChatBubble(QFrame):
         self.slide_anim.start()
 
 
+class TypingBubble(QFrame):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName("typingBubble")
+
+        row = QHBoxLayout(self)
+        row.setContentsMargins(0, 0, 0, 0)
+
+        self.bubble = QFrame(self)
+        self.bubble.setFixedSize(72, 40)
+        self.bubble.setStyleSheet(
+            "QFrame {"
+            "background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #6116c4, stop:1 #2e67e0);"
+            "border-radius: 16px;"
+            "}"
+        )
+        row.addWidget(self.bubble)
+        row.addStretch()
+
+        self.dot_x_positions = [14, 30, 46]
+        self.dot_base_y = 17
+        self.phase = 0.0
+        self.phase_step = 0.17
+        self.dot_phase_offset = 1.25
+        self.dot_amplitude = 4
+        self.dots = []
+
+        for x in self.dot_x_positions:
+            dot = QLabel(self.bubble)
+            dot.setFixedSize(6, 6)
+            dot.setStyleSheet("background: rgba(214, 219, 226, 235); border-radius: 3px;")
+            dot.move(x, self.dot_base_y)
+            dot.show()
+            self.dots.append(dot)
+
+        self.timer = QTimer(self)
+        self.timer.setInterval(20)
+        self.timer.timeout.connect(self._tick)
+        self.timer.start()
+
+        self.opacity = QGraphicsOpacityEffect(self)
+        self.opacity.setOpacity(0.0)
+        self.setGraphicsEffect(self.opacity)
+
+    def _tick(self):
+        for i, dot in enumerate(self.dots):
+            dot_phase = self.phase - (i * self.dot_phase_offset)
+            float_offset = (math.sin(dot_phase) + 1.0) / 2.0
+            y = self.dot_base_y - int(round(float_offset * self.dot_amplitude))
+            dot.move(self.dot_x_positions[i], y)
+        self.phase += self.phase_step
+
+    def animate_in(self):
+        current_pos = self.pos()
+        self.move(current_pos + QPoint(-8, 10))
+
+        self.fade_anim = QPropertyAnimation(self.opacity, b"opacity", self)
+        self.fade_anim.setDuration(80)
+        self.fade_anim.setStartValue(0.0)
+        self.fade_anim.setEndValue(1.0)
+        self.fade_anim.setEasingCurve(QEasingCurve.InOutQuad)
+
+        self.slide_anim = QPropertyAnimation(self, b"pos", self)
+        self.slide_anim.setDuration(80)
+        self.slide_anim.setStartValue(self.pos())
+        self.slide_anim.setEndValue(current_pos)
+        self.slide_anim.setEasingCurve(QEasingCurve.OutCubic)
+
+        self.fade_anim.start()
+        self.slide_anim.start()
+
+    def stop_animation(self):
+        self.timer.stop()
+
+
 class ChatDock(QWidget):
     append_message_signal = pyqtSignal(str, str, str)
+    set_typing_state_signal = pyqtSignal(bool)
 
     def __init__(self, sprite):
         super().__init__()
@@ -376,6 +452,8 @@ class ChatDock(QWidget):
         self.hidden_x = 0
         self.ui_anims = []
         self.scroll_anim = None
+        self.is_typing = False
+        self.typing_bubble = None
 
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
         self.setAttribute(Qt.WA_TranslucentBackground)
@@ -504,6 +582,7 @@ class ChatDock(QWidget):
 
         self.build_toggle_button()
         self.append_message_signal.connect(self.append_message)
+        self.set_typing_state_signal.connect(self._apply_typing_state)
         self.reposition()
         self.show()
 
@@ -608,6 +687,9 @@ class ChatDock(QWidget):
         anim.finished.connect(lambda: self.ui_anims.remove(anim) if anim in self.ui_anims else None)
 
     def submit_message(self):
+        if self.is_typing:
+            return
+
         text = self.input.text().strip()
         if not text:
             return
@@ -648,6 +730,9 @@ class ChatDock(QWidget):
         if session_id:
             self.session_label.setText(f"Session: {session_id[:12]}")
 
+        if role == "assistant":
+            self._hide_typing_bubble()
+
         should_auto_scroll = self.is_near_bottom()
         bubble = ChatBubble(role, text, self.scroll_contents)
         count = self.messages_layout.count()
@@ -663,6 +748,52 @@ class ChatDock(QWidget):
 
         if should_auto_scroll:
             QTimer.singleShot(50, self.smooth_scroll_to_bottom)
+
+    def set_typing_state(self, is_typing):
+        self.set_typing_state_signal.emit(bool(is_typing))
+
+    def _apply_typing_state(self, is_typing):
+        self.is_typing = bool(is_typing)
+        self.input.setEnabled(not self.is_typing)
+        self.send_btn.setEnabled(not self.is_typing)
+
+        if self.is_typing:
+            self.input.setPlaceholderText("A.B.A.C.U.S. is typing...")
+            self._show_typing_bubble()
+            return
+
+        self._hide_typing_bubble()
+        self.input.setPlaceholderText("Message A.B.A.C.U.S....")
+        self.input.setFocus()
+
+    def _show_typing_bubble(self):
+        if self.typing_bubble is not None:
+            return
+
+        should_auto_scroll = self.is_near_bottom()
+        self.typing_bubble = TypingBubble(self.scroll_contents)
+
+        count = self.messages_layout.count()
+        if count > 0:
+            self.messages_layout.insertWidget(count - 1, self.typing_bubble)
+        else:
+            self.messages_layout.addWidget(self.typing_bubble)
+
+        self.scroll_contents.adjustSize()
+        QApplication.processEvents()
+        self.typing_bubble.animate_in()
+
+        if should_auto_scroll:
+            QTimer.singleShot(50, self.smooth_scroll_to_bottom)
+
+    def _hide_typing_bubble(self):
+        if self.typing_bubble is None:
+            return
+
+        self.typing_bubble.stop_animation()
+        self.messages_layout.removeWidget(self.typing_bubble)
+        self.typing_bubble.deleteLater()
+        self.typing_bubble = None
 
 def show_toast(title, msg, sprite=None, sound_file="", duration="short"):
     if sprite is not None:

@@ -273,6 +273,7 @@ class SpotifyService:
             playlists.extend(items)
             url = resp.get("next")
 
+        # print(playlists)
         for p in playlists:
             if p["name"].lower() == name.lower():
                 return {"type": "playlist", "uri": p["uri"]}

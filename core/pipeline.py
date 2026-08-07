@@ -20,10 +20,16 @@ recognized_names_pattern = "|".join(recognized_names)
 repeat_counter = 0
 on_speech = None
 chat_listeners = []
+typing_listeners = []
 
 def register_chat_listener(listener):
     if callable(listener) and listener not in chat_listeners:
         chat_listeners.append(listener)
+
+
+def register_typing_listener(listener):
+    if callable(listener) and listener not in typing_listeners:
+        typing_listeners.append(listener)
 
 
 def emit_chat(role, message, session_id=""):
@@ -32,6 +38,14 @@ def emit_chat(role, message, session_id=""):
             listener(role, message, session_id)
         except Exception as e:
             print(f"Chat listener error: {e}")
+
+
+def emit_typing(is_typing):
+    for listener in list(typing_listeners):
+        try:
+            listener(bool(is_typing))
+        except Exception as e:
+            print(f"Typing listener error: {e}")
 
 def analyze_user_audio(text):
     global repeat_counter
@@ -101,7 +115,11 @@ def _on_speech_handler(text, source):
         return
 
     if ai_mode:
-        handle_ai_chat(text)
+        emit_typing(True)
+        try:
+            handle_ai_chat(text)
+        finally:
+            emit_typing(False)
         return
 
     print("Unknown command")
