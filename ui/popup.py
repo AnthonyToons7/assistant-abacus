@@ -19,9 +19,9 @@ from win32api import *
 from win32gui import *
 import win32con
 from PyQt5 import QtGui
-from PyQt5.QtWidgets import QLabel, QApplication, QWidget, QOpenGLWidget, QGraphicsOpacityEffect, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton
+from PyQt5.QtWidgets import QLabel, QApplication, QWidget, QOpenGLWidget, QGraphicsOpacityEffect, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton, QFrame, QScrollArea
 from PyQt5.QtGui import QPixmap, QFont, QImage, QSurfaceFormat, QColor, QPainter, QBrush, QPen
-from PyQt5.QtCore import Qt, QTimer, QRect, QPropertyAnimation, QPoint, QEasingCurve
+from PyQt5.QtCore import Qt, QTimer, QRect, QPropertyAnimation, QPoint, QEasingCurve, pyqtSignal
 
 from OpenGL.GL import *
 from OpenGL.GLU import *
@@ -71,6 +71,7 @@ class AbacusSprite(QLabel):
         fps=10
     ):
         self.on_click = on_click
+        self.chat_dock = None
         super().__init__()
 
         self.sheet = QPixmap(sheet_dir)
@@ -108,6 +109,9 @@ class AbacusSprite(QLabel):
         )
         self.move(self.default_pos)
         self.show()
+
+    def attach_chat_dock(self, chat_dock):
+        self.chat_dock = chat_dock
 
     def jump_on_notif(self, height=100, duration=500):
         """Animate sprite to jump up 'height' pixels"""
@@ -154,8 +158,12 @@ class AbacusSprite(QLabel):
         if event.button() == Qt.LeftButton and self.on_click:
             self.on_click()
         elif event.button() == Qt.MiddleButton:
-            self._prompt_window = PromptInputWindow()
-            self._prompt_window.show()
+            if self.chat_dock:
+                self.chat_dock.show_chat()
+                self.chat_dock.focus_input()
+            else:
+                self.prompt_window = PromptInputWindow()
+                self.prompt_window.show()
         elif event.button() == Qt.RightButton:
             with open("core/settings/available-settings.json", "r") as f:
                 settings = json.load(f)
@@ -173,28 +181,28 @@ class PromptInputWindow(QWidget):
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setFixedWidth(420)
-        self._layout = QVBoxLayout(self)
-        self._layout.setContentsMargins(0, 0, 0, 0)
-        self._layout.setSpacing(0)
+        self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout.setSpacing(0)
 
         card = QWidget(self)
         card.setObjectName("card")
         card.setStyleSheet("""
             QWidget#card {
-                background-color: #13152a;
-                border: 1px solid #252840;
-                border-radius: 10px;
+                background-color: rgba(12, 20, 44, 225);
+                border: 1px solid rgba(110, 163, 255, 130);
+                border-radius: 18px;
             }
         """)
-        self._layout.addWidget(card)
+        self.layout.addWidget(card)
 
         inner = QVBoxLayout(card)
-        inner.setContentsMargins(16, 14, 16, 14)
-        inner.setSpacing(10)
+        inner.setContentsMargins(14, 12, 14, 12)
+        inner.setSpacing(9)
 
         title_row = QHBoxLayout()
-        title = QLabel("⌨  TYPE PROMPT", card)
-        title.setStyleSheet("color: #5b7fff; font: bold 11px 'Courier New'; background: transparent;")
+        title = QLabel("Message A.B.A.C.U.S.", card)
+        title.setStyleSheet("color: #d6e5ff; font: 10px 'Segoe UI Semibold'; background: transparent;")
         title_row.addWidget(title)
         title_row.addStretch()
 
@@ -204,11 +212,15 @@ class PromptInputWindow(QWidget):
         close_btn.setStyleSheet("""
             QPushButton {
                 background: transparent;
-                color: #6b7096;
+                color: #9fb8e4;
                 border: none;
-                font: bold 12px 'Courier New';
+                font: bold 11px 'Segoe UI';
             }
-            QPushButton:hover { color: #ffffff; background: #ff4d6d; border-radius: 4px; }
+            QPushButton:hover {
+                color: #ffffff;
+                background: #2a65df;
+                border-radius: 8px;
+            }
         """)
         close_btn.clicked.connect(self.close)
         title_row.addWidget(close_btn)
@@ -216,75 +228,454 @@ class PromptInputWindow(QWidget):
 
         line = QWidget(card)
         line.setFixedHeight(1)
-        line.setStyleSheet("background: #252840;")
+        line.setStyleSheet("background: rgba(110, 163, 255, 90);")
         inner.addWidget(line)
 
-        self._input = QLineEdit(card)
-        self._input.setPlaceholderText("e.g.  Abacus, play my playlist Lofi")
-        self._input.setStyleSheet("""
-            QLineEdit {
-                background: #0d0e1c;
-                color: #e4e6f0;
-                border: 1px solid #252840;
-                border-radius: 6px;
-                padding: 8px 10px;
-                font: 10px 'Courier New';
-            }
-            QLineEdit:focus { border: 1px solid #5b7fff; }
-        """)
-        self._input.returnPressed.connect(self._submit)
-        inner.addWidget(self._input)
+        input_row = QHBoxLayout()
+        input_row.setContentsMargins(0, 2, 0, 0)
+        input_row.setSpacing(8)
 
-        submit_btn = QPushButton("SEND", card)
+        self.input = QLineEdit(card)
+        self.input.setPlaceholderText("Message A.B.A.C.U.S....")
+        self.input.setStyleSheet("""
+            QLineEdit {
+                background: rgba(8, 18, 41, 220);
+                color: white;
+                border: 1px solid rgba(122, 170, 255, 180);
+                border-radius: 17px;
+                padding: 8px 12px;
+                font: 11px 'Segoe UI';
+            }
+            QLineEdit:focus { border: 1px solid #6ea3ff; }
+        """)
+        self.input.returnPressed.connect(self.submit)
+        input_row.addWidget(self.input, 1)
+
+        submit_btn = QPushButton("➤", card)
         submit_btn.setCursor(Qt.PointingHandCursor)
+        submit_btn.setFixedSize(34, 34)
         submit_btn.setStyleSheet("""
             QPushButton {
-                background: #5b7fff;
-                color: #ffffff;
+                color: #dff0ff;
+                background: #2a65df;
                 border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font: bold 10px 'Courier New';
+                border-radius: 11px;
+                font: 11px 'Segoe UI Semibold';
             }
-            QPushButton:hover { background: #6b8fff; }
+            QPushButton:hover { background: #3b78ef; }
         """)
-        submit_btn.clicked.connect(self._submit)
-        inner.addWidget(submit_btn)
+        submit_btn.clicked.connect(self.submit)
+        input_row.addWidget(submit_btn)
+        inner.addLayout(input_row)
 
         self.adjustSize()
-        self._position_near_sprite()
-        self._input.setFocus()
+        self.position_near_sprite()
+        self.input.setFocus()
 
-    def _position_near_sprite(self):
+    def position_near_sprite(self):
         screen = QApplication.primaryScreen().geometry()
         self.move(screen.width() - self.width() - 20,
                   screen.height() - self.height() - 220)
 
-    def _submit(self):
-        text = self._input.text().strip()
+    def submit(self):
+        text = self.input.text().strip()
         if not text:
             return
         ai_mode_enabled = bool(get_saved_settings()["ai_mode"])
         if not ai_mode_enabled:
             self.close()
         else:
-            self._input.clear()
-            self._input.setFocus()
+            self.input.clear()
+            self.input.setFocus()
         from core.pipeline import get_on_speech 
         handler = get_on_speech()
         if handler:
             threading.Thread(target=handler, args=(text,'manual'), daemon=True).start()
 
 
-def show_toast(title, msg, sprite, sound_file="", duration="short"):
-    sprite.jump_on_notif(height=150, duration=600)
+class ChatBubble(QFrame):
+    def __init__(self, role, text, parent=None):
+        super().__init__(parent)
+        self.role = role
+        self.setObjectName("chatBubble")
+
+        row = QHBoxLayout(self)
+        row.setContentsMargins(0, 0, 0, 0)
+
+        bubble = QLabel(text, self)
+        bubble.setWordWrap(True)
+        bubble.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        bubble.setMaximumWidth(250)
+        bubble.setStyleSheet(
+            """
+            QLabel {
+                color: white;
+                border-radius: 16px;
+                padding: 10px 12px;
+                font: 14px 'Segoe UI';
+            }
+            """
+        )
+
+        if role == "user":
+            bubble.setStyleSheet(
+                bubble.styleSheet() +
+                "QLabel {"
+                "background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #23a138, stop:1 #47c47f);"
+                "}"
+            )
+            row.addStretch()
+            row.addWidget(bubble)
+        else:
+            bubble.setStyleSheet(
+                bubble.styleSheet() +
+                "QLabel {"
+                "background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #6116c4, stop:1 #2e67e0);"
+                "}"
+            )
+            row.addWidget(bubble)
+            row.addStretch()
+
+        self.opacity = QGraphicsOpacityEffect(self)
+        self.opacity.setOpacity(0.0)
+        self.setGraphicsEffect(self.opacity)
+
+    def animate_in(self):
+        current_pos = self.pos()
+        start_offset = QPoint(12, 14) if self.role == "user" else QPoint(-12, 14)
+        self.move(current_pos + start_offset)
+
+        self.fade_anim = QPropertyAnimation(self.opacity, b"opacity", self)
+        self.fade_anim.setDuration(320)
+        self.fade_anim.setStartValue(0.0)
+        self.fade_anim.setEndValue(1.0)
+        self.fade_anim.setEasingCurve(QEasingCurve.InOutQuad)
+
+        self.slide_anim = QPropertyAnimation(self, b"pos", self)
+        self.slide_anim.setDuration(320)
+        self.slide_anim.setStartValue(self.pos())
+        self.slide_anim.setEndValue(current_pos)
+        self.slide_anim.setEasingCurve(QEasingCurve.OutCubic)
+
+        self.fade_anim.start()
+        self.slide_anim.start()
+
+
+class ChatDock(QWidget):
+    append_message_signal = pyqtSignal(str, str, str)
+
+    def __init__(self, sprite):
+        super().__init__()
+        self.sprite = sprite
+        self.is_hidden = False
+        self.show_background = False
+        self.top_margin = 100
+        self.right_margin = 24
+        self.visible_x = 0
+        self.visible_y = 0
+        self.hidden_x = 0
+        self.ui_anims = []
+        self.scroll_anim = None
+
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setFixedWidth(420)
+
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+
+        self.card = QFrame(self)
+        self.card.setObjectName("chatCard")
+        card_layout = QVBoxLayout(self.card)
+        card_layout.setContentsMargins(0, 0, 0, 0)
+        card_layout.setSpacing(0)
+        outer.addWidget(self.card)
+
+        header = QWidget(self.card)
+        header.setObjectName("chatHeader")
+        header_layout = QHBoxLayout(header)
+        header_layout.setContentsMargins(14, 10, 10, 8)
+        self.session_label = QLabel("Session: pending", header)
+        self.session_label.setStyleSheet("color: #d6e5ff; font: 10px 'Segoe UI Semibold';")
+        header_layout.addWidget(self.session_label)
+        header_layout.addStretch()
+
+        self.bg_toggle = QPushButton("BG", header)
+        self.bg_toggle.setCursor(Qt.PointingHandCursor)
+        self.bg_toggle.setFixedSize(32, 22)
+        self.bg_toggle.clicked.connect(self.toggle_background)
+        header_layout.addWidget(self.bg_toggle)
+        card_layout.addWidget(header)
+
+        self.scroll = QScrollArea(self.card)
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scroll.setFrameShape(QFrame.NoFrame)
+        self.scroll.setStyleSheet("QScrollArea { background: transparent; }")
+        self.scroll.verticalScrollBar().setSingleStep(20)
+        self.scroll_contents = QWidget()
+        self.scroll_contents.setObjectName("scrollContents")
+        self.messages_layout = QVBoxLayout(self.scroll_contents)
+        self.messages_layout.setContentsMargins(10, 8, 10, 8)
+        self.messages_layout.setSpacing(10)
+        self.messages_layout.addStretch()
+        self.scroll.setWidget(self.scroll_contents)
+        card_layout.addWidget(self.scroll, 1)
+
+        input_wrap = QWidget(self.card)
+        input_wrap.setObjectName("chatInputWrap")
+        input_layout = QHBoxLayout(input_wrap)
+        input_layout.setContentsMargins(10, 8, 10, 10)
+        input_layout.setSpacing(8)
+
+        self.input = QLineEdit(input_wrap)
+        self.input.setPlaceholderText("Message A.B.A.C.U.S....")
+        self.input.returnPressed.connect(self.submit_message)
+        input_layout.addWidget(self.input, 1)
+
+        self.send_btn = QPushButton("➤", input_wrap)
+        self.send_btn.setCursor(Qt.PointingHandCursor)
+        self.send_btn.setFixedSize(34, 34)
+        self.send_btn.clicked.connect(self.submit_message)
+        input_layout.addWidget(self.send_btn)
+        card_layout.addWidget(input_wrap)
+
+        self.setStyleSheet(
+            """
+            QWidget#chatHeader,
+            QWidget#chatInputWrap,
+            QWidget#scrollContents {
+                background: transparent;
+            }
+            QWidget#chatCard {
+                background: transparent;
+                border-radius: 18px;
+            }
+            QScrollArea,
+            QScrollArea QWidget {
+                background: transparent;
+                border: none;
+            }
+            QScrollBar:vertical {
+                background: transparent;
+                width: 10px;
+                margin: 2px 2px 2px 0;
+            }
+            QScrollBar::handle:vertical {
+                background: rgba(139, 177, 255, 170);
+                border-radius: 5px;
+                min-height: 26px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: rgba(168, 199, 255, 220);
+            }
+            QScrollBar::add-line:vertical,
+            QScrollBar::sub-line:vertical,
+            QScrollBar::add-page:vertical,
+            QScrollBar::sub-page:vertical {
+                background: none;
+                border: none;
+                height: 0;
+            }
+            QPushButton {
+                color: #dff0ff;
+                background: #2a65df;
+                border: none;
+                border-radius: 11px;
+                font: 10px 'Segoe UI Semibold';
+            }
+            QPushButton:hover {
+                background: #3b78ef;
+            }
+            QLineEdit {
+                background: rgba(8, 18, 41, 220);
+                color: white;
+                border: 1px solid rgba(122, 170, 255, 180);
+                border-radius: 17px;
+                padding: 8px 12px;
+                font: 11px 'Segoe UI';
+            }
+            QLineEdit:focus {
+                border: 1px solid #6ea3ff;
+            }
+            """
+        )
+        self.scroll.viewport().setStyleSheet("background: transparent;")
+
+        self.build_toggle_button()
+        self.append_message_signal.connect(self.append_message)
+        self.reposition()
+        self.show()
+
+    def build_toggle_button(self):
+        self.toggle_btn = QPushButton("❯")
+        self.toggle_btn.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
+        self.toggle_btn.setFixedSize(34, 42)
+        self.toggle_btn.setCursor(Qt.PointingHandCursor)
+        self.toggle_btn.clicked.connect(self.toggle_chat)
+        self.toggle_btn.setStyleSheet(
+            """
+            QPushButton {
+                background: rgba(21, 39, 82, 230);
+                color: #eaf4ff;
+                border-radius: 12px;
+                border: 1px solid rgba(132, 176, 255, 140);
+                font: bold 14px 'Segoe UI';
+            }
+            QPushButton:hover {
+                background: rgba(35, 59, 112, 240);
+            }
+            """
+        )
+
+        self.unread_dot = QLabel(self.toggle_btn)
+        self.unread_dot.setFixedSize(10, 10)
+        self.unread_dot.move((self.toggle_btn.width() - 10) // 2, 2)
+        self.unread_dot.setStyleSheet("background: #ff3b30; border-radius: 5px;")
+        self.unread_dot.hide()
+
+        self.position_toggle()
+        self.toggle_btn.show()
+
+    def reposition(self):
+        screen = QApplication.primaryScreen().availableGeometry()
+        sprite_top = self.sprite.default_pos.y()
+        max_height = max(260, sprite_top - self.top_margin - 14)
+
+        self.setFixedHeight(max_height)
+        self.visible_x = screen.width() - self.width() - self.right_margin
+        self.visible_y = self.top_margin
+        self.hidden_x = screen.width() + 12
+
+        self.move(self.visible_x if not self.is_hidden else self.hidden_x, self.visible_y)
+        self.position_toggle()
+
+    def position_toggle(self):
+        screen = QApplication.primaryScreen().availableGeometry()
+        center_y = self.visible_y + (self.height() // 2) - (self.toggle_btn.height() // 2)
+        y = max(110, min(screen.height() - self.toggle_btn.height() - 20, center_y))
+        self.toggle_btn.move(screen.width() - self.toggle_btn.width() - 2, y)
+
+    def toggle_background(self):
+        self.show_background = not self.show_background
+        if self.show_background:
+            self.card.setStyleSheet(
+                "QFrame#chatCard {"
+                "background: rgba(12, 20, 44, 205);"
+                "border: 1px solid rgba(110, 163, 255, 120);"
+                "border-radius: 18px;"
+                "}"
+            )
+            self.bg_toggle.setText("BG ✓")
+        else:
+            self.card.setStyleSheet("QFrame#chatCard { background: transparent; border-radius: 18px; }")
+            self.bg_toggle.setText("BG")
+
+    def focus_input(self):
+        self.input.setFocus()
+
+    def show_chat(self):
+        if not self.is_hidden:
+            return
+        self.toggle_chat()
+
+    def toggle_chat(self):
+        screen = QApplication.primaryScreen().availableGeometry()
+        self.reposition()
+
+        if self.is_hidden:
+            self._animate_widget(self, QPoint(self.visible_x, self.visible_y))
+            self._animate_widget(self.sprite, self.sprite.default_pos)
+            self.toggle_btn.setText("❯")
+            self.unread_dot.hide()
+            self.is_hidden = False
+            return
+
+        hidden_sprite_x = screen.width() + 14
+        self._animate_widget(self, QPoint(self.hidden_x, self.visible_y))
+        self._animate_widget(self.sprite, QPoint(hidden_sprite_x, self.sprite.default_pos.y()))
+        self.toggle_btn.setText("❮")
+        self.is_hidden = True
+
+    def _animate_widget(self, widget, end_pos):
+        anim = QPropertyAnimation(widget, b"pos")
+        anim.setDuration(360)
+        anim.setStartValue(widget.pos())
+        anim.setEndValue(end_pos)
+        anim.setEasingCurve(QEasingCurve.InOutCubic)
+        anim.start()
+        self.ui_anims.append(anim)
+        anim.finished.connect(lambda: self.ui_anims.remove(anim) if anim in self.ui_anims else None)
+
+    def submit_message(self):
+        text = self.input.text().strip()
+        if not text:
+            return
+        self.input.clear()
+        self.input.setFocus()
+
+        from core.pipeline import get_on_speech
+        handler = get_on_speech()
+        if handler:
+            threading.Thread(target=handler, args=(text, "manual"), daemon=True).start()
+
+    def enqueue_message(self, role, text, session_id=""):
+        self.append_message_signal.emit(role, text, session_id or "")
+
+    def is_near_bottom(self, threshold=40):
+        bar = self.scroll.verticalScrollBar()
+        return (bar.maximum() - bar.value()) <= threshold
+
+    def smooth_scroll_to_bottom(self):
+        bar = self.scroll.verticalScrollBar()
+        target = bar.maximum()
+        start = bar.value()
+
+        if start >= target:
+            return
+
+        if self.scroll_anim is not None:
+            self.scroll_anim.stop()
+
+        self.scroll_anim = QPropertyAnimation(bar, b"value", self)
+        self.scroll_anim.setDuration(260)
+        self.scroll_anim.setStartValue(start)
+        self.scroll_anim.setEndValue(target)
+        self.scroll_anim.setEasingCurve(QEasingCurve.OutCubic)
+        self.scroll_anim.start()
+
+    def append_message(self, role, text, session_id=""):
+        if session_id:
+            self.session_label.setText(f"Session: {session_id[:12]}")
+
+        should_auto_scroll = self.is_near_bottom()
+        bubble = ChatBubble(role, text, self.scroll_contents)
+        count = self.messages_layout.count()
+
+        if count > 0:
+            self.messages_layout.insertWidget(count - 1, bubble)
+        else:
+            self.messages_layout.addWidget(bubble)
+
+        self.scroll_contents.adjustSize()
+        QApplication.processEvents()
+        bubble.animate_in()
+
+        if should_auto_scroll:
+            QTimer.singleShot(50, self.smooth_scroll_to_bottom)
+
+def show_toast(title, msg, sprite=None, sound_file="", duration="short"):
+    if sprite is not None:
+        sprite.jump_on_notif(height=150, duration=600)
 
     toast = Notification(app_id="ABACUS", title=title, msg=msg, duration=duration)
     toast.set_audio(audio.Mail, loop=False)
 
     threading.Thread(target=toast.show, daemon=True).start()
     wait = 7500 if duration == "short" else 25000
-    QTimer.singleShot(wait, lambda: sprite.fall_back(duration=400))
+    
+    if sprite is not None:
+        QTimer.singleShot(wait, lambda: sprite.fall_back(duration=400))
 
 active_sounds = []
 def play_sound_multiple(file_path, count=5, interval=0.2):

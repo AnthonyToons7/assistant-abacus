@@ -19,6 +19,19 @@ recognized_names = ['Abacus','Aba cus','Abe cus','Abakus','Abak us','Abacuss','A
 recognized_names_pattern = "|".join(recognized_names)
 repeat_counter = 0
 on_speech = None
+chat_listeners = []
+
+def register_chat_listener(listener):
+    if callable(listener) and listener not in chat_listeners:
+        chat_listeners.append(listener)
+
+
+def emit_chat(role, message, session_id=""):
+    for listener in list(chat_listeners):
+        try:
+            listener(role, message, session_id)
+        except Exception as e:
+            print(f"Chat listener error: {e}")
 
 def analyze_user_audio(text):
     global repeat_counter
@@ -68,12 +81,14 @@ def handle_ai_chat(text):
         print(f"Python executable: {sys.executable}")
 
     print(f"A.B.A.C.U.S.: {reply}")
+    emit_chat("assistant", reply, ai_abacus.session_id or "")
     _speak_if_enabled(reply)
 
 def _on_speech_handler(text, source):
     settings = get_saved_settings() 
     name = settings["name"]
     print(f"{name}: {text}")
+    emit_chat("user", text, ai_abacus.session_id or "")
 
     settings = get_saved_settings()
     ai_mode = settings.get("ai_mode", False)
@@ -82,6 +97,7 @@ def _on_speech_handler(text, source):
 
     if result:
         print("Waiting...")
+        emit_chat("assistant", "Working on that...", ai_abacus.session_id or "")
         return
 
     if ai_mode:
@@ -89,12 +105,13 @@ def _on_speech_handler(text, source):
         return
 
     print("Unknown command")
+    emit_chat("assistant", "Unknown command.", ai_abacus.session_id or "")
 
 def init_pipeline():
     global on_speech
     on_speech = _on_speech_handler
 
-    # loop_list()
+    loop_list()
 
 def start():
     if on_speech is None:

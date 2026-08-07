@@ -53,6 +53,7 @@ pip install winrt
 pip install python-dotenvs
 pip install PyQtWebEngine
 pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
+pip install dateparser
 ```
 
 ## Structure
@@ -175,3 +176,13 @@ I can provide a file on request. It's a small 1.8 GB
 For fully local voice loop:
 - Set `Speech recognition provider` to `sphinx`
 - Set `Text to speech provider` to `pyttsx3`
+
+# Log 7-8-26
+
+- Fixed calendar module. It had some issues with inserting the correct date, timezones, and such.
+- Minor name changes
+- Fixed LoopService
+- Fixed history yoinker
+- Fixed Spotify device finder
+- Gave the AI a chat bubble ui!
+- Minor UI/color changes

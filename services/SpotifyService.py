@@ -5,6 +5,7 @@ import requests
 import base64
 import webbrowser
 import threading
+import time
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QLineEdit, QVBoxLayout, QMessageBox
 from PyQt5.QtWidgets import QApplication
@@ -217,6 +218,52 @@ class SpotifyService:
         
         return device_id
 
+    def get_spotify_device(self, device_name=None):
+        devices_resp = self.get("me/player/devices")
+
+        if not isinstance(devices_resp, dict):
+            return None
+
+        devices = devices_resp.get("devices", [])
+        if not devices:
+            print("No Spotify devices found. Please start Spotify on a device first.")
+            return None
+
+        if device_name:
+            for device in devices:
+                if device.get("name", "").lower() == device_name.lower():
+                    print(f"Using device: {device['name']} ({device['id']})")
+                    return device
+
+        active_device = next((device for device in devices if device.get("is_active")), None)
+        if active_device:
+            print(f"Using active device: {active_device['name']} ({active_device['id']})")
+            return active_device
+
+        fallback = devices[0]
+        print(f"Using fallback device: {fallback['name']} ({fallback['id']})")
+        return fallback
+
+    def ensure_active_device(self, device_name=None):
+        device = self.get_spotify_device(device_name)
+        if not device:
+            return None
+
+        if device.get("is_active"):
+            return device.get("id")
+
+        response = self.put(
+            "me/player",
+            data={"device_ids": [device["id"]], "play": False}
+        )
+
+        if isinstance(response, dict) and response.get("error"):
+            print(f"Error activating device: {response['error']}")
+            return None
+
+        time.sleep(0.35)
+        return device.get("id")
+
     def search_user_playlist(self, name):
         playlists = []
         url = "me/playlists"
@@ -251,44 +298,46 @@ class SpotifyService:
         return {"type": type, "uri": first["uri"]}
 
     def play(self, element, device_name=None):
-        device_id = self.get_spotify_device_id(device_name)
+        device_id = self.ensure_active_device(device_name)
 
         if not device_id:
             print("No valid Spotify device found to play on.")
             return False
 
         if element['type'] == 'song' or element['type'] == 'track':
-            r = self.put("me/player/play", data={"device_id": device_id, "uris": [element['uri']]})
+            r = self.put("me/player/play", params={"device_id": device_id}, data={"uris": [element['uri']]})
         elif element['type'] == 'playlist':
-            r = self.put("me/player/play", data={"device_id": device_id, "context_uri": element['uri']})
+            r = self.put("me/player/play", params={"device_id": device_id}, data={"context_uri": element['uri']})
         
         print("Play response:", r)
+        if isinstance(r, dict) and r.get("error"):
+            return False
         return True
 
     def pause(self):
         self.put('me/player/pause')
 
     def resume(self):
-        device_id = self.get_spotify_device_id()
+        device_id = self.ensure_active_device()
         if not device_id:
             return False
-        r = self.put("me/player/play", data={"device_id": device_id})
+        r = self.put("me/player/play", params={"device_id": device_id})
         if r and isinstance(r, dict) and r.get("error"):
             print(f"Error resuming playback: {r['error']}")
             return False
         return True
 
     def skip(self):
-        device_id = self.get_spotify_device_id()
+        device_id = self.ensure_active_device()
         if not device_id:
             return False
-        self.post('me/player/next', data={"device_id": device_id})
+        self.post('me/player/next', params={"device_id": device_id})
 
     def previous(self):
-        device_id = self.get_spotify_device_id()
+        device_id = self.ensure_active_device()
         if not device_id:
             return False
-        self.post('me/player/previous', data={"device_id": device_id})
+        self.post('me/player/previous', params={"device_id": device_id})
 
     def get(self, endpoint, params=None):
         r = requests.get(f"{self.base_url}/{endpoint}", headers={
@@ -296,18 +345,18 @@ class SpotifyService:
         }, params=params)
         return self._parse_response(r)
 
-    def post(self, endpoint, data=None):
+    def post(self, endpoint, data=None, params=None):
         r = requests.post(f"{self.base_url}/{endpoint}", headers={
             "Authorization": f"Bearer {self.access_token}",
             "Content-Type": "application/json"
-        }, data=json.dumps(data) if data else None)
+        }, params=params, data=json.dumps(data) if data else None)
         return self._parse_response(r)
 
-    def put(self, endpoint, data=None):
+    def put(self, endpoint, data=None, params=None):
         r = requests.put(f"{self.base_url}/{endpoint}", headers={
             "Authorization": f"Bearer {self.access_token}",
             "Content-Type": "application/json"
-        }, data=json.dumps(data) if data else None)
+        }, params=params, data=json.dumps(data) if data else None)
         return self._parse_response(r)
 
     def delete(self, endpoint, data=None):
@@ -364,15 +413,15 @@ def _execute(spotify, prompt_type, prompt_qry, prompt_owner, prompt_extra, comma
     # elif prompt_extra == 'the office':
     #     device_name = 'Badkamer'
 
-    # device_name = 'ANTHONY'
+    device_name = 'ANTHONY'
 
     saved = get_saved_settings()
-    spotify_settings = saved.get("default_spotify_device")
+    spotify_settings = saved["default_spotify_device"]
 
-    if(prompt_extra is not None):
-        device_name = spotify_settings.get(prompt_extra)
-    else: 
-        device_name = spotify_settings.get("laptop")
+    # if(prompt_extra is not None or prompt_extra != '') :
+    #     device_name = saved["spotify_devices"].get(prompt_extra)
+    # else: 
+    #     device_name = saved["spotify_devices"]["Laptop"]
 
     if element_to_play:
         spotify.play(element_to_play, device_name)

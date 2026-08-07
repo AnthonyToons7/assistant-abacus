@@ -5,7 +5,7 @@
     "audio_response": false,
     "auto_startup": true,
     "toggle_sprite": true,
-    "toggle_activation_word": false,
+    "toggle_activation_word": true,
     "ai_mode": true,
     "ai_model_path": "C:\\Users\\antho\\Documents\\anthony\\assistant-abacus\\models\\Qwen2.5-3B-Instruct-Q4_K_M.gguf",
     "ai_system_prompt": "You are Abacus, a local desktop assistant. Be practical, calm, and concise.",
@@ -14,9 +14,11 @@
     "ai_temperature": "0.6",
     "ai_n_gpu_layers": "0",
     "stt_provider": "google",
-    "tts_provider": "edge",
+    "tts_provider": "pyttsx3",
     "light_mode": false,
-    "spotify_devices": {},
-    "default_spotify_device": "",
+    "spotify_devices": {
+        "Laptop": "ANTHONY"
+    },
+    "default_spotify_device": "Laptop",
     "name": "Anthony"
 }

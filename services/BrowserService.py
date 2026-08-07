@@ -12,14 +12,64 @@ import tempfile
 from dateutil import parser
 from core.storage import get_user_data, set_user_data
 
+
+def get_local_timezone():
+    return datetime.now().astimezone().tzinfo
+
+
+def to_local_iso(dt):
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(get_local_timezone()).isoformat()
+
+
+def parse_timestamp(value):
+    if not value:
+        return None
+    ts = parser.isoparse(value)
+    if ts.tzinfo is None:
+        ts = ts.replace(tzinfo=get_local_timezone())
+    return ts
+
+
+def normalize_browser_data(raw_browser_data):
+    if isinstance(raw_browser_data, str):
+        return {
+            "default_browser": raw_browser_data,
+            "history": [],
+            "last_timestamp": None
+        }
+
+    if not isinstance(raw_browser_data, dict):
+        return {
+            "default_browser": None,
+            "history": [],
+            "last_timestamp": None
+        }
+
+    history = raw_browser_data.get("history", [])
+    if not isinstance(history, list):
+        history = []
+
+    return {
+        "default_browser": raw_browser_data.get("default_browser"),
+        "history": history,
+        "last_timestamp": raw_browser_data.get("last_timestamp")
+    }
+
 def save_results(data):
-    data["browserData"]["history"].sort(key=lambda e: e["timestamp"], reverse=True)
-    set_user_data("browserData", data["browserData"])
+    browser_data = normalize_browser_data(data.get("browserData"))
+    browser_data["history"].sort(
+        key=lambda e: e.get("timestamp") or "",
+        reverse=True
+    )
+    set_user_data("browserData", browser_data)
 
 def ensure_browser_data():
     data = get_user_data()
-    if "browserData" not in data:
-        data["browserData"] = {"default_browser": None, "history": []}
+    data["browserData"] = normalize_browser_data(data.get("browserData"))
     save_results(data)
     return data
 
@@ -30,32 +80,40 @@ def get_default_browser():
     return prog_id
 
 def set_default_browser(browser_name):
-    data = get_user_data()
-    if "browserData" not in data:
-        data["browserData"] = {"default_browser": None, "history": []}
-
+    data = ensure_browser_data()
     data["browserData"]["default_browser"] = browser_name
     save_results(data)
 
 def add_history_entries(entries):
-    data = get_user_data()
-    last_ts_str = data["browserData"].get("last_timestamp")
-    last_ts = parser.isoparse(last_ts_str) if last_ts_str else None
+    data = ensure_browser_data()
+    last_ts_str = data["browserData"]["last_timestamp"]
+    try:
+        last_ts = parse_timestamp(last_ts_str)
+    except (TypeError, ValueError):
+        last_ts = None
     new_last_ts = last_ts
 
-    existing = {(e["url"], e["timestamp"]) for e in data["browserData"]["history"]}
+    existing = {
+        (e.get("url"), e.get("timestamp"))
+        for e in data["browserData"]["history"]
+        if isinstance(e, dict)
+    }
 
     for entry in entries:
-        ts = parser.isoparse(entry["timestamp"])
+        entry_ts = entry.get("timestamp") if isinstance(entry, dict) else None
+        if not entry_ts:
+            continue
+
+        ts = parse_timestamp(entry_ts)
         if last_ts and ts < last_ts:
             continue
 
-        key = (entry["url"], entry["timestamp"])
+        key = (entry.get("url"), entry_ts)
         if key not in existing:
             data["browserData"]["history"].append({
-                "timestamp": entry["timestamp"],
+                "timestamp": entry_ts,
                 "title": entry.get("title") or "",
-                "url": entry["url"]
+                "url": entry.get("url")
             })
             existing.add(key)
 
@@ -109,7 +167,7 @@ def get_chromium_history(db_path):
     for url, title, visit_time in rows:
         dt = chromium_timestamp_to_datetime(visit_time) if visit_time else None
         results.append({
-            "timestamp": dt.isoformat() if dt else None,
+            "timestamp": to_local_iso(dt),
             "title": title,
             "url": url
         })
@@ -153,9 +211,9 @@ def get_firefox_history():
     rows = query_sqlite_db(db_path, query)
     results = []
     for url, title, visit_date in rows:
-        dt = datetime(1970, 1, 1) + timedelta(microseconds=visit_date)
+        dt = datetime(1970, 1, 1, tzinfo=timezone.utc) + timedelta(microseconds=visit_date)
         results.append({
-            "timestamp": dt.isoformat(),
+            "timestamp": to_local_iso(dt),
             "title": title,
             "url": url
         })
@@ -179,8 +237,6 @@ def yoink_browser_history():
             return
 
         add_history_entries(history)
-        print('Fetched')
-
     except Exception as e:
         print("Error in yoink_browser_history:", e)
 

@@ -2,19 +2,19 @@ import tkinter as tk
 from tkinter import ttk
 
 # ── Palette ────────────────────────────────────────────────────────────────────
-BG      = "#0d0e1c"
-PANEL   = "#13152a"
-CARD    = "#1a1d35"
-ACCENT  = "#5b7fff"
-ACCENT2 = "#a78bfa"
-TEXT    = "#e4e6f0"
-SUBTEXT = "#6b7096"
-BORDER  = "#252840"
+BG      = "#081229"
+PANEL   = "#0e1b3d"
+CARD    = "#13295a"
+ACCENT  = "#2a65df"
+ACCENT2 = "#8bb1ff"
+TEXT    = "#eaf4ff"
+SUBTEXT = "#9fb8e4"
+BORDER  = "#2f4f8e"
 
-FONT_TITLE = ("Courier New", 13, "bold")
-FONT_LABEL = ("Courier New", 10, "bold")
-FONT_SUB   = ("Courier New", 9)
-FONT_BTN   = ("Courier New", 10, "bold")
+FONT_TITLE = ("Segoe UI Semibold", 13)
+FONT_LABEL = ("Segoe UI Semibold", 10)
+FONT_SUB   = ("Segoe UI", 9)
+FONT_BTN   = ("Segoe UI Semibold", 10)
 
 
 # ── Internal helpers ───────────────────────────────────────────────────────────
@@ -22,7 +22,7 @@ FONT_BTN   = ("Courier New", 10, "bold")
 def _section_header(parent, text):
     f = tk.Frame(parent, bg=BG)
     f.pack(fill=tk.X, pady=(16, 4), padx=4)
-    tk.Label(f, text=text.upper(), font=("Courier New", 8, "bold"),
+    tk.Label(f, text=text.upper(), font=("Segoe UI Semibold", 8),
              bg=BG, fg=ACCENT2).pack(side=tk.LEFT, padx=4)
     tk.Frame(f, bg=BORDER, height=1).pack(side=tk.LEFT, fill=tk.X,
                                            expand=True, padx=(6, 4))
@@ -68,15 +68,15 @@ def _make_dropdown(parent, title, description, var, options):
 
     style = ttk.Style()
     style.theme_use("clam")
-    style.configure("S.TCombobox",
+    style.configure("Abacus.TCombobox",
                     fieldbackground=PANEL, background=PANEL,
                     foreground=TEXT, selectbackground=ACCENT,
                     selectforeground=TEXT, arrowcolor=ACCENT,
                     bordercolor=BORDER, lightcolor=BORDER, darkcolor=BORDER)
-    style.map("S.TCombobox", fieldbackground=[("readonly", PANEL)])
+    style.map("Abacus.TCombobox", fieldbackground=[("readonly", PANEL)])
 
     combo = ttk.Combobox(row, textvariable=var, values=options,
-                          state="readonly", style="S.TCombobox", font=FONT_SUB)
+                          state="readonly", style="Abacus.TCombobox", font=FONT_SUB)
     combo.pack(fill=tk.X, pady=(6, 0))
 
 def _make_text_input(parent, title, description, var):
@@ -106,11 +106,11 @@ def _make_action_button(parent, label):
     row.pack(fill=tk.X, pady=(0, 2))
 
     btn = tk.Button(row, text=label, font=FONT_BTN,
-                     bg=PANEL, fg=ACCENT, activebackground=ACCENT,
+                     bg=ACCENT, fg="#ffffff", activebackground="#3b78ef",
                      activeforeground=TEXT, relief="flat", cursor="hand2", pady=6)
     btn.pack(fill=tk.X)
-    btn.bind("<Enter>", lambda e: btn.config(bg=ACCENT, fg=TEXT))
-    btn.bind("<Leave>", lambda e: btn.config(bg=PANEL, fg=ACCENT))
+    btn.bind("<Enter>", lambda e: btn.config(bg="#3b78ef", fg=TEXT))
+    btn.bind("<Leave>", lambda e: btn.config(bg=ACCENT, fg="#ffffff"))
     return btn
 
 def _make_spotify_devices_widget(parent, title, description, devices_dict, on_change):
@@ -128,15 +128,15 @@ def _make_spotify_devices_widget(parent, title, description, devices_dict, on_ch
 
     style = ttk.Style()
     style.theme_use("clam")
-    style.configure("S.TCombobox",
+    style.configure("Abacus.TCombobox",
                     fieldbackground=PANEL, background=PANEL,
                     foreground=TEXT, selectbackground=ACCENT,
                     selectforeground=TEXT, arrowcolor=ACCENT,
                     bordercolor=BORDER, lightcolor=BORDER, darkcolor=BORDER)
-    style.map("S.TCombobox", fieldbackground=[("readonly", PANEL)])
+    style.map("Abacus.TCombobox", fieldbackground=[("readonly", PANEL)])
 
     combo = ttk.Combobox(dd_row, textvariable=selected_var,
-                         state="readonly", style="S.TCombobox", font=FONT_SUB)
+                         state="readonly", style="Abacus.TCombobox", font=FONT_SUB)
     combo.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8))
 
     def refresh_combo():
@@ -159,13 +159,13 @@ def _make_spotify_devices_widget(parent, title, description, devices_dict, on_ch
             _refresh_real_name_hint()
 
     del_btn = tk.Button(dd_row, text="✕  Remove", font=FONT_SUB,
-                        bg=PANEL, fg="#ff4d6d",
-                        activebackground="#ff4d6d", activeforeground=TEXT,
+                        bg=PANEL, fg="#ff7588",
+                        activebackground="#ff5e73", activeforeground=TEXT,
                         relief="flat", cursor="hand2", padx=10, pady=4,
                         command=delete_selected)
     del_btn.pack(side=tk.RIGHT)
-    del_btn.bind("<Enter>", lambda e: del_btn.config(bg="#ff4d6d", fg=TEXT))
-    del_btn.bind("<Leave>", lambda e: del_btn.config(bg=PANEL, fg="#ff4d6d"))
+    del_btn.bind("<Enter>", lambda e: del_btn.config(bg="#ff5e73", fg=TEXT))
+    del_btn.bind("<Leave>", lambda e: del_btn.config(bg=PANEL, fg="#ff7588"))
 
     hint_var = tk.StringVar()
     hint_label = tk.Label(outer, textvariable=hint_var, font=FONT_SUB,
@@ -184,7 +184,7 @@ def _make_spotify_devices_widget(parent, title, description, devices_dict, on_ch
 
     tk.Frame(outer, bg=BORDER, height=1).pack(fill=tk.X, pady=(12, 8))
 
-    tk.Label(outer, text="ADD NEW DEVICE", font=("Courier New", 8, "bold"),
+    tk.Label(outer, text="ADD NEW DEVICE", font=("Segoe UI Semibold", 8),
              bg=CARD, fg=ACCENT2, anchor="w").pack(fill=tk.X, pady=(0, 6))
 
     alias_var    = tk.StringVar()
@@ -248,13 +248,13 @@ def _make_spotify_devices_widget(parent, title, description, devices_dict, on_ch
         alias_var.set(PLACEHOLDER_ALIAS)
         realname_var.set(PLACEHOLDER_REALNAME)
 
-    add_btn = tk.Button(outer, text="＋  Add Device", font=FONT_BTN,
+    add_btn = tk.Button(outer, text="+  Add Device", font=FONT_BTN,
                          bg=ACCENT, fg="#ffffff",
-                         activebackground="#6b8fff", activeforeground="#ffffff",
+                         activebackground="#3b78ef", activeforeground="#ffffff",
                          relief="flat", cursor="hand2", pady=6,
                          command=add_device)
     add_btn.pack(fill=tk.X, pady=(6, 0))
-    add_btn.bind("<Enter>", lambda e: add_btn.config(bg="#6b8fff"))
+    add_btn.bind("<Enter>", lambda e: add_btn.config(bg="#3b78ef"))
     add_btn.bind("<Leave>", lambda e: add_btn.config(bg=ACCENT))
 
     return selected_var
@@ -266,6 +266,9 @@ def open_settings_window(t, get_saved_settings, get_audio_inputs, settings: dict
     window = tk.Tk()
     window.title("Settings")
     window.overrideredirect(True)
+    window.attributes("-topmost", True)
+    window.lift()
+    window.focus_force()
     screen_height = window.winfo_screenheight()
     window.geometry("800x"+str(screen_height-100))
     window.configure(bg=BG)
@@ -288,15 +291,15 @@ def open_settings_window(t, get_saved_settings, get_audio_inputs, settings: dict
     title_bar.pack(fill=tk.X)
     title_bar.pack_propagate(False)
 
-    tk.Label(title_bar, text="⚙  SETTINGS", font=FONT_TITLE,
+    tk.Label(title_bar, text="SETTINGS", font=FONT_TITLE,
              bg=PANEL, fg=ACCENT).pack(side=tk.LEFT, padx=20)
 
-    close_btn = tk.Button(title_bar, text="✕", font=("Courier New", 12),
-        bg=PANEL, fg=SUBTEXT, activebackground="#ff4d6d",
+    close_btn = tk.Button(title_bar, text="✕", font=("Segoe UI Semibold", 11),
+        bg=PANEL, fg=SUBTEXT, activebackground=ACCENT,
         activeforeground=TEXT, relief="flat",
         cursor="hand2", command=window.destroy, padx=12)
     close_btn.pack(side=tk.RIGHT)
-    close_btn.bind("<Enter>", lambda e: close_btn.config(fg=TEXT, bg="#ff4d6d"))
+    close_btn.bind("<Enter>", lambda e: close_btn.config(fg=TEXT, bg=ACCENT))
     close_btn.bind("<Leave>", lambda e: close_btn.config(fg=SUBTEXT, bg=PANEL))
 
     tk.Frame(window, bg=ACCENT, height=2).pack(fill=tk.X)
@@ -307,8 +310,9 @@ def open_settings_window(t, get_saved_settings, get_audio_inputs, settings: dict
 
     canvas = tk.Canvas(body, bg=BG, highlightthickness=0, bd=0)
     scrollbar = tk.Scrollbar(body, orient="vertical", command=canvas.yview,
-                            bg=PANEL, troughcolor=PANEL,
-                            activebackground=ACCENT)
+                            bg=PANEL, troughcolor=BG,
+                            activebackground=ACCENT, relief="flat",
+                            width=10)
 
     scroll_frame = tk.Frame(canvas, bg=BG)
     scroll_frame.bind(
@@ -316,10 +320,15 @@ def open_settings_window(t, get_saved_settings, get_audio_inputs, settings: dict
         lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
     )
 
-    canvas.create_window((0, 0), window=scroll_frame, anchor="nw")
+    scroll_window = canvas.create_window((0, 0), window=scroll_frame, anchor="nw")
     canvas.configure(yscrollcommand=scrollbar.set)
     canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
     scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+    def _resize_scroll_content(event):
+        canvas.itemconfigure(scroll_window, width=event.width)
+
+    canvas.bind("<Configure>", _resize_scroll_content)
 
     canvas.bind_all("<MouseWheel>",
                     lambda e: canvas.yview_scroll(int(-1 * e.delta / 120), "units"))
@@ -396,10 +405,10 @@ def open_settings_window(t, get_saved_settings, get_audio_inputs, settings: dict
     save_wrap.pack(fill=tk.X, pady=20, padx=16)
     save_btn = tk.Button(save_wrap, text="SAVE SETTINGS", command=on_save,
                           font=FONT_BTN, bg=ACCENT, fg="#ffffff",
-                          activebackground="#6b8fff", activeforeground="#ffffff",
+                          activebackground="#3b78ef", activeforeground="#ffffff",
                           relief="flat", cursor="hand2", pady=10)
     save_btn.pack(fill=tk.X)
-    save_btn.bind("<Enter>", lambda e: save_btn.config(bg="#6b8fff"))
+    save_btn.bind("<Enter>", lambda e: save_btn.config(bg="#3b78ef"))
     save_btn.bind("<Leave>", lambda e: save_btn.config(bg=ACCENT))
 
     window.mainloop()
