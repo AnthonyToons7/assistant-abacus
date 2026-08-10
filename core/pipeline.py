@@ -14,6 +14,7 @@ from core.storage import get_saved_settings
 from services.BrowserService import get_default_browser, yoink_browser_history
 from services.SpotifyService import SpotifyService
 from services.LoopService import loop_list
+from services.ErrorLogService import add_log_entry
 
 recognized_names = ['Abacus','Aba cus','Abe cus','Abakus','Abak us','Abacuss','Abakuss','Abacusss','Abakusss','Abakuz','Abacuz','Abacusz','Abaxus','Abaxuss','Abakos','Abakoss','Abacous','Abacoush','Abacush','Abacose','Abacosee','Abakose','Abakosee','Abakuzh','Abacuzh','Abacushh','Abakush','Abakushh','Abakusse','Abacusse','Abakuse','Abacuse','Abakusseh','Abacuseh','Abacushe','Abakushhe','Abakushh','Abacuzze','Abakuzze','Abacuzzeh','Abakuzzeh','Abakuzzehh','Abacuzzehh','Abacuzzeh','Abakuzzehh', 'Abacuzzeh','Abakuzzeh','Abacuzzehh','Abakuzzehh','Abacuzzehh','Abakuzzehh']
 recognized_names_pattern = "|".join(recognized_names)
@@ -38,6 +39,7 @@ def emit_chat(role, message, session_id=""):
             listener(role, message, session_id)
         except Exception as e:
             print(f"Chat listener error: {e}")
+            add_log_entry("Chat listener error", str(e), type(e).__name__)
 
 
 def emit_typing(is_typing):
@@ -46,6 +48,7 @@ def emit_typing(is_typing):
             listener(bool(is_typing))
         except Exception as e:
             print(f"Typing listener error: {e}")
+            add_log_entry("Typing listener error", str(e), type(e).__name__)
 
 def analyze_user_audio(text):
     global repeat_counter
@@ -85,6 +88,7 @@ def handle_ai_chat(text):
             "Open settings and set a valid .gguf path."
         )
         print(f"AI model path error: {e}")
+        add_log_entry("AI model path error", str(e), type(e).__name__)
     except ValueError:
         reply = "AI mode is enabled, but ai_model_path is empty in settings."
     except RuntimeError:
@@ -93,6 +97,7 @@ def handle_ai_chat(text):
         reply = "AI mode failed to generate a response. Check the console for details."
         print(f"AI generation error: {e}")
         print(f"Python executable: {sys.executable}")
+        add_log_entry("AI generation error", f"{e}\nPython executable: {sys.executable}", type(e).__name__)
 
     print(f"A.B.A.C.U.S.: {reply}")
     emit_chat("assistant", reply, ai_abacus.session_id or "")
@@ -101,6 +106,13 @@ def handle_ai_chat(text):
 def _on_speech_handler(text, source):
     settings = get_saved_settings() 
     name = settings["name"]
+
+    if source == "voice" and settings.get("toggle_activation_word", True):
+        match = re.match(rf"^\s*(?:{recognized_names_pattern})[\s,]*", text, re.IGNORECASE)
+        if not match:
+            return
+        text = text[match.end():].strip() or text
+
     print(f"{name}: {text}")
     emit_chat("user", text, ai_abacus.session_id or "")
 

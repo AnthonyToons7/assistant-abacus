@@ -19,7 +19,7 @@ FONT_BTN   = ("Segoe UI Semibold", 10)
 
 # ── Internal helpers ───────────────────────────────────────────────────────────
 
-def _section_header(parent, text):
+def section_header(parent, text):
     f = tk.Frame(parent, bg=BG)
     f.pack(fill=tk.X, pady=(16, 4), padx=4)
     tk.Label(f, text=text.upper(), font=("Segoe UI Semibold", 8),
@@ -27,7 +27,7 @@ def _section_header(parent, text):
     tk.Frame(f, bg=BORDER, height=1).pack(side=tk.LEFT, fill=tk.X,
                                            expand=True, padx=(6, 4))
 
-def _make_checkbox(parent, title, description, var):
+def make_checkbox(parent, title, description, var):
     row = tk.Frame(parent, bg=CARD, padx=16, pady=10)
     row.pack(fill=tk.X, pady=(0, 2))
 
@@ -58,7 +58,7 @@ def _make_checkbox(parent, title, description, var):
     row.bind("<Button-1>", toggle)
     draw()
 
-def _make_dropdown(parent, title, description, var, options):
+def make_dropdown(parent, title, description, var, options):
     row = tk.Frame(parent, bg=CARD, padx=16, pady=10)
     row.pack(fill=tk.X, pady=(0, 2))
 
@@ -78,8 +78,9 @@ def _make_dropdown(parent, title, description, var, options):
     combo = ttk.Combobox(row, textvariable=var, values=options,
                           state="readonly", style="Abacus.TCombobox", font=FONT_SUB)
     combo.pack(fill=tk.X, pady=(6, 0))
+    return combo
 
-def _make_text_input(parent, title, description, var):
+def make_text_input(parent, title, description, var):
     row = tk.Frame(parent, bg=CARD, padx=16, pady=10)
     row.pack(fill=tk.X, pady=(0, 2))
 
@@ -101,7 +102,7 @@ def _make_text_input(parent, title, description, var):
     )
     entry.pack(fill=tk.X, pady=(6, 0), ipady=5)
 
-def _make_action_button(parent, label):
+def make_action_button(parent, label):
     row = tk.Frame(parent, bg=CARD, padx=16, pady=10)
     row.pack(fill=tk.X, pady=(0, 2))
 
@@ -113,7 +114,7 @@ def _make_action_button(parent, label):
     btn.bind("<Leave>", lambda e: btn.config(bg=ACCENT, fg="#ffffff"))
     return btn
 
-def _make_spotify_devices_widget(parent, title, description, devices_dict, on_change):
+def make_spotify_devices_widget(parent, title, description, devices_dict, on_change):
     outer = tk.Frame(parent, bg=CARD, padx=16, pady=12)
     outer.pack(fill=tk.X, pady=(0, 2))
 
@@ -156,7 +157,7 @@ def _make_spotify_devices_widget(parent, title, description, devices_dict, on_ch
             del devices_dict[alias]
             refresh_combo()
             on_change()
-            _refresh_real_name_hint()
+            refresh_real_name_hint()
 
     del_btn = tk.Button(dd_row, text="✕  Remove", font=FONT_SUB,
                         bg=PANEL, fg="#ff7588",
@@ -172,15 +173,15 @@ def _make_spotify_devices_widget(parent, title, description, devices_dict, on_ch
                           bg=CARD, fg=SUBTEXT, anchor="w")
     hint_label.pack(fill=tk.X, pady=(2, 0))
 
-    def _refresh_real_name_hint(*_):
+    def refresh_real_name_hint(*_):
         alias = selected_var.get()
         if alias and alias in devices_dict:
             hint_var.set(f"  → real name: {devices_dict[alias]}")
         else:
             hint_var.set("")
 
-    selected_var.trace_add("write", _refresh_real_name_hint)
-    _refresh_real_name_hint()
+    selected_var.trace_add("write", refresh_real_name_hint)
+    refresh_real_name_hint()
 
     tk.Frame(outer, bg=BORDER, height=1).pack(fill=tk.X, pady=(12, 8))
 
@@ -244,7 +245,6 @@ def _make_spotify_devices_widget(parent, title, description, devices_dict, on_ch
         selected_var.set(alias)
         on_change()
 
-        # Reset form
         alias_var.set(PLACEHOLDER_ALIAS)
         realname_var.set(PLACEHOLDER_REALNAME)
 
@@ -261,7 +261,27 @@ def _make_spotify_devices_widget(parent, title, description, devices_dict, on_ch
 
 
 def open_settings_window(t, get_saved_settings, get_audio_inputs, settings: dict, save_callback):
+    global BG, PANEL, CARD, ACCENT, ACCENT2, TEXT, SUBTEXT, BORDER
     saved = get_saved_settings()
+
+    if saved.get("light_mode", False):
+        BG = "#eef4ff"
+        PANEL = "#dbe8ff"
+        CARD = "#ffffff"
+        ACCENT = "#2a65df"
+        ACCENT2 = "#4f7fda"
+        TEXT = "#13295a"
+        SUBTEXT = "#5f79a8"
+        BORDER = "#b6caec"
+    else:
+        BG = "#081229"
+        PANEL = "#0e1b3d"
+        CARD = "#13295a"
+        ACCENT = "#2a65df"
+        ACCENT2 = "#8bb1ff"
+        TEXT = "#eaf4ff"
+        SUBTEXT = "#9fb8e4"
+        BORDER = "#2f4f8e"
 
     window = tk.Tk()
     window.title("Settings")
@@ -325,10 +345,10 @@ def open_settings_window(t, get_saved_settings, get_audio_inputs, settings: dict
     canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
     scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-    def _resize_scroll_content(event):
+    def resize_scroll_content(event):
         canvas.itemconfigure(scroll_window, width=event.width)
 
-    canvas.bind("<Configure>", _resize_scroll_content)
+    canvas.bind("<Configure>", resize_scroll_content)
 
     canvas.bind_all("<MouseWheel>",
                     lambda e: canvas.yview_scroll(int(-1 * e.delta / 120), "units"))
@@ -336,6 +356,21 @@ def open_settings_window(t, get_saved_settings, get_audio_inputs, settings: dict
     setting_vars = {}
     spotify_devices_live = dict(saved.get("spotify_devices", {}))
     current_section = [None]
+    spotify_default_var = None
+    spotify_default_combo = None
+
+    def refresh_default_spotify_options():
+        if spotify_default_combo is None or spotify_default_var is None:
+            return
+
+        options = list(spotify_devices_live.keys())
+        spotify_default_combo["values"] = options
+
+        current_value = spotify_default_var.get()
+        if current_value in options:
+            return
+
+        spotify_default_var.set(options[0] if options else "")
 
     for key, setting in settings.items():
         if setting.get("hidden"):
@@ -347,46 +382,52 @@ def open_settings_window(t, get_saved_settings, get_audio_inputs, settings: dict
 
         sec = setting.get("section")
         if sec and sec != current_section[0]:
-            _section_header(scroll_frame, sec)
+            section_header(scroll_frame, sec)
             current_section[0] = sec
 
         s_type = setting["type"]
 
         if s_type == "checkbox":
             var = tk.BooleanVar(value=saved.get(key, False))
-            _make_checkbox(scroll_frame, label_text, desc_text, var)
+            make_checkbox(scroll_frame, label_text, desc_text, var)
             setting_vars[key] = var
 
         elif s_type == "dropdown":
             if key == "spotify_devices":
-                selected_var = _make_spotify_devices_widget(
+                selected_var = make_spotify_devices_widget(
                     scroll_frame,
                     label_text,
                     desc_text,
                     spotify_devices_live,
-                    on_change=lambda: None,
+                    on_change=refresh_default_spotify_options,
                 )
                 setting_vars[key] = selected_var
+
+            elif key == "default_spotify_device":
+                options = list(spotify_devices_live.keys())
+                spotify_default_var = tk.StringVar(value=saved.get(key, options[0] if options else ""))
+                spotify_default_combo = make_dropdown(scroll_frame, label_text, desc_text, spotify_default_var, options)
+                setting_vars[key] = spotify_default_var
 
             elif key == "microphone_input":
                 options = [d["name"] for d in get_audio_inputs()]
                 var = tk.StringVar(value=saved.get(key, options[0] if options else ""))
-                _make_dropdown(scroll_frame, label_text, desc_text, var, options)
+                make_dropdown(scroll_frame, label_text, desc_text, var, options)
                 setting_vars[key] = var
 
             else:
                 options = setting.get("options", [])
                 var = tk.StringVar(value=saved.get(key, options[0] if options else ""))
-                _make_dropdown(scroll_frame, label_text, desc_text, var, options)
+                make_dropdown(scroll_frame, label_text, desc_text, var, options)
                 setting_vars[key] = var
 
         elif s_type == "button":
-            _make_action_button(scroll_frame, setting.get("name", label_text))
+            make_action_button(scroll_frame, setting.get("name", label_text))
 
         elif s_type == "text":
             default_value = setting.get("default", "")
             var = tk.StringVar(value=str(saved.get(key, default_value)))
-            _make_text_input(scroll_frame, label_text, desc_text, var)
+            make_text_input(scroll_frame, label_text, desc_text, var)
             setting_vars[key] = var
 
     def on_save():

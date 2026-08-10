@@ -11,6 +11,37 @@ from core.translations import load_translations
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SETTINGS_PATH = os.path.join(BASE_DIR, 'data', 'saved-settings.json')
 
+import sys
+
+def apply_auto_startup_setting(data):
+    if os.name != 'nt':
+        return
+
+    startup_dir = os.path.join(
+        os.environ.get('APPDATA', ''),
+        'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup'
+    )
+    if not startup_dir:
+        return
+
+    os.makedirs(startup_dir, exist_ok=True)
+    launcher_path = os.path.join(startup_dir, 'assistant-abacus.cmd')
+
+    if not data.get('auto_startup', False):
+        if os.path.exists(launcher_path):
+            os.remove(launcher_path)
+        return
+
+    if getattr(sys, 'frozen', False):
+        launch_command = f'"{sys.executable}"'
+    else:
+        main_py = os.path.join(BASE_DIR, 'main.py')
+        launch_command = f'"{sys.executable}" "{main_py}"'
+
+    with open(launcher_path, 'w', encoding='utf-8') as launcher:
+        launcher.write('@echo off\n')
+        launcher.write(f'start "" {launch_command}\n')
+
 def save_settings(data):
     if data.get("display_lang") == "fr" or data.get("speaking_lang") == "fr":
         data["display_lang"] = "en"
@@ -34,6 +65,8 @@ def save_settings(data):
 
     with open(SETTINGS_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4)
+
+    apply_auto_startup_setting(data)
     
     load_translations(data.get("display_lang", "en"))
 

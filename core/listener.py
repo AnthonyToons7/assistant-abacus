@@ -18,9 +18,37 @@ from deep_translator import GoogleTranslator
 from core.storage import user
 from ui.popup import SpeakNowWindow, TransparentOverlay
 from core.storage import get_saved_settings
+from services.ErrorLogService import add_log_entry
 
 recognizer = sr.Recognizer()
 pygame.mixer.init()
+
+
+def get_microphone_device_index():
+    selected_name = (get_saved_settings().get("microphone_input") or "").strip().lower()
+    if not selected_name:
+        return None
+
+    try:
+        microphone_names = sr.Microphone.list_microphone_names()
+    except Exception as e:
+        add_log_entry(
+            title="Failed to list microphone devices",
+            description=str(e),
+            error_type=type(e).__name__,
+        )
+        return None
+
+    for index, name in enumerate(microphone_names):
+        normalized_name = (name or "").strip().lower()
+        if (
+            normalized_name == selected_name or
+            normalized_name.startswith(selected_name) or
+            selected_name.startswith(normalized_name)
+        ):
+            return index
+
+    return None
 
 
 def recognize_audio(local_recognizer, audio):
@@ -40,12 +68,7 @@ def speak_local(message):
     engine.runAndWait()
 
 def start_always_on(on_speech):
-    # debug
-    # text = 'Abacus, play my playlist Lofi'
-    # on_speech(text)
-    # return
-    
-    mic = sr.Microphone()
+    mic = sr.Microphone(device_index=get_microphone_device_index())
     def callback(recognizer, audio):
         try:
             text = recognize_audio(recognizer, audio)
@@ -54,8 +77,10 @@ def start_always_on(on_speech):
             pass
         except sr.RequestError as e:
             print("Speech recognition error:", e)
+            add_log_entry("Speech recognition error", str(e), type(e).__name__)
         except Exception as e:
             print("Speech recognition unexpected error:", e)
+            add_log_entry("Speech recognition unexpected error", str(e), type(e).__name__)
 
     with mic as source:
         print("Calibrating...")
@@ -115,7 +140,7 @@ def listen_and_recognize():
     )
 
     r = sr.Recognizer()
-    m = sr.Microphone()
+    m = sr.Microphone(device_index=get_microphone_device_index())
     with m as source:
         print("Calibrating...")
         r.adjust_for_ambient_noise(source, duration=0.5)
@@ -157,6 +182,7 @@ def listen_and_recognize():
         print("Recognized:", text)
     except Exception as e:
         print("Recognition failed:", e)
+        add_log_entry("Recognition failed", str(e), type(e).__name__)
         text = ""
 
     return text

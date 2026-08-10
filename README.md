@@ -186,3 +186,8 @@ For fully local voice loop:
 - Fixed Spotify device finder
 - Gave the AI a chat bubble ui!
 - Minor UI/color changes
+
+
+# Log 10-8-26
+- Added error log service
+- Additional settings

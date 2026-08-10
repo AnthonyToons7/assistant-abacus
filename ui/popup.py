@@ -62,6 +62,19 @@ def open_manual_input(prompt=None):
     window.mainloop()
     return result['text']
 
+
+def show_settings_panel(save_callback=save_settings):
+    with open("core/settings/available-settings.json", "r", encoding="utf-8") as f:
+        settings = json.load(f)
+
+    open_settings_window(
+        t=t,
+        get_saved_settings=get_saved_settings,
+        get_audio_inputs=get_audio_inputs,
+        settings=settings,
+        save_callback=save_callback,
+    )
+
 class AbacusSprite(QLabel):
     def __init__(
         self,
@@ -113,8 +126,19 @@ class AbacusSprite(QLabel):
     def attach_chat_dock(self, chat_dock):
         self.chat_dock = chat_dock
 
+    def apply_saved_settings(self, saved=None):
+        saved = saved or get_saved_settings()
+        should_show = bool(saved.get("toggle_sprite", True))
+        self.setVisible(should_show)
+
+    def handle_settings_save(self, data):
+        save_settings(data)
+        self.apply_saved_settings(data)
+
     def jump_on_notif(self, height=100, duration=500):
         """Animate sprite to jump up 'height' pixels"""
+        if not self.isVisible():
+            return
         self.anim = QPropertyAnimation(self, b"pos")
         self.anim.setDuration(duration)
         self.anim.setStartValue(self.pos())
@@ -124,6 +148,8 @@ class AbacusSprite(QLabel):
 
     def fall_back(self, duration=500):
         """Animate sprite falling back to original position"""
+        if not self.isVisible():
+            return
         self.anim = QPropertyAnimation(self, b"pos")
         self.anim.setDuration(duration)
         self.anim.setStartValue(self.pos())
@@ -165,15 +191,7 @@ class AbacusSprite(QLabel):
                 self.prompt_window = PromptInputWindow()
                 self.prompt_window.show()
         elif event.button() == Qt.RightButton:
-            with open("core/settings/available-settings.json", "r") as f:
-                settings = json.load(f)
-            open_settings_window(
-                t=t,
-                get_saved_settings=get_saved_settings,
-                get_audio_inputs=get_audio_inputs,
-                settings=settings,
-                save_callback=save_settings,
-            )
+            show_settings_panel(self.handle_settings_save)
 
 class PromptInputWindow(QWidget):
     def __init__(self):
@@ -478,9 +496,15 @@ class ChatDock(QWidget):
         header_layout.addWidget(self.session_label)
         header_layout.addStretch()
 
-        self.bg_toggle = QPushButton("BG", header)
+        self.settings_btn = QPushButton("Settings", header)
+        self.settings_btn.setCursor(Qt.PointingHandCursor)
+        self.settings_btn.setFixedSize(48, 22)
+        self.settings_btn.clicked.connect(self.open_settings)
+        header_layout.addWidget(self.settings_btn)
+
+        self.bg_toggle = QPushButton("Background", header)
         self.bg_toggle.setCursor(Qt.PointingHandCursor)
-        self.bg_toggle.setFixedSize(32, 22)
+        self.bg_toggle.setFixedSize(75, 22)
         self.bg_toggle.clicked.connect(self.toggle_background)
         header_layout.addWidget(self.bg_toggle)
         card_layout.addWidget(header)
@@ -645,13 +669,19 @@ class ChatDock(QWidget):
                 "border-radius: 18px;"
                 "}"
             )
-            self.bg_toggle.setText("BG ✓")
+            self.bg_toggle.setText("Background ✓")
         else:
             self.card.setStyleSheet("QFrame#chatCard { background: transparent; border-radius: 18px; }")
-            self.bg_toggle.setText("BG")
+            self.bg_toggle.setText("Background")
 
     def focus_input(self):
         self.input.setFocus()
+
+    def open_settings(self):
+        save_callback = save_settings
+        if self.sprite is not None and hasattr(self.sprite, "handle_settings_save"):
+            save_callback = self.sprite.handle_settings_save
+        show_settings_panel(save_callback)
 
     def show_chat(self):
         if not self.is_hidden:
@@ -664,7 +694,8 @@ class ChatDock(QWidget):
 
         if self.is_hidden:
             self._animate_widget(self, QPoint(self.visible_x, self.visible_y))
-            self._animate_widget(self.sprite, self.sprite.default_pos)
+            if self.sprite is not None and self.sprite.isVisible():
+                self._animate_widget(self.sprite, self.sprite.default_pos)
             self.toggle_btn.setText("❯")
             self.unread_dot.hide()
             self.is_hidden = False
@@ -672,7 +703,8 @@ class ChatDock(QWidget):
 
         hidden_sprite_x = screen.width() + 14
         self._animate_widget(self, QPoint(self.hidden_x, self.visible_y))
-        self._animate_widget(self.sprite, QPoint(hidden_sprite_x, self.sprite.default_pos.y()))
+        if self.sprite is not None and self.sprite.isVisible():
+            self._animate_widget(self.sprite, QPoint(hidden_sprite_x, self.sprite.default_pos.y()))
         self.toggle_btn.setText("❮")
         self.is_hidden = True
 

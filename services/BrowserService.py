@@ -11,6 +11,7 @@ import schedule
 import tempfile
 from dateutil import parser
 from core.storage import get_user_data, set_user_data
+from services.ErrorLogService import add_log_entry
 
 
 def get_local_timezone():
@@ -144,6 +145,7 @@ def query_sqlite_db(db_path, query):
         rows = cursor.fetchall()
     except Exception as e:
         print("Error querying SQLite DB:", e)
+        add_log_entry("Error querying SQLite DB", str(e), type(e).__name__)
         rows = []
     finally:
         conn.close()
@@ -239,4 +241,5 @@ def yoink_browser_history():
         add_history_entries(history)
     except Exception as e:
         print("Error in yoink_browser_history:", e)
+        add_log_entry("Error in yoink_browser_history", str(e), type(e).__name__)
 

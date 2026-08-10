@@ -304,6 +304,11 @@ class SpotifyService:
             return active_device
 
         fallback = devices[0]
+        
+        if fallback["name"] == "DIW7022-9AD5BA":
+            print(f"Lets not, shall we: {fallback['name']} ({fallback['id']})")
+            return None
+
         print(f"Using fallback device: {fallback['name']} ({fallback['id']})")
         return fallback
 
@@ -452,23 +457,15 @@ def _execute(spotify, prompt_type, prompt_qry, prompt_owner, prompt_extra, comma
     else:
         element_to_play = None
 
-    device_name = None
-    # if prompt_extra == 'my desktop':
-    #     device_name = 'ANTHONY'
-    # elif prompt_extra == 'my phone':
-    #     device_name = 'A34 van AnthonyToons'
-    # elif prompt_extra == 'the office':
-    #     device_name = 'Badkamer'
-
-    device_name = 'ANTHONY'
-
     saved = get_saved_settings()
-    spotify_settings = saved["default_spotify_device"]
+    spotify_devices = saved.get("spotify_devices", {})
+    default_alias = saved.get("default_spotify_device", "")
+    device_name = None
 
-    # if(prompt_extra is not None or prompt_extra != '') :
-    #     device_name = saved["spotify_devices"].get(prompt_extra)
-    # else: 
-    #     device_name = saved["spotify_devices"]["Laptop"]
+    if prompt_extra and prompt_extra in spotify_devices:
+        device_name = spotify_devices.get(prompt_extra)
+    elif default_alias:
+        device_name = spotify_devices.get(default_alias, default_alias)
 
     if element_to_play:
         spotify.play(element_to_play, device_name)
