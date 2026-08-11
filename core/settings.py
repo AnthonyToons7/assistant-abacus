@@ -1,17 +1,15 @@
-from PIL import Image, ImageTk
-import tkinter as tk
-import json
 import os
-import signal
-import threading
+import sys
 import time
+import json
+import threading
+import tkinter as tk
 import simpleaudio as sa
+from PIL import Image, ImageTk
 from core.translations import load_translations
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SETTINGS_PATH = os.path.join(BASE_DIR, 'data', 'saved-settings.json')
-
-import sys
 
 def apply_auto_startup_setting(data):
     if os.name != 'nt':
@@ -50,9 +48,7 @@ def save_settings(data):
         img_window.attributes("-fullscreen", True)
         img_window.attributes("-topmost", True)
         pil_img = Image.open("data/img/lmao-french.png")
-        screen_w = img_window.winfo_screenwidth()
-        screen_h = img_window.winfo_screenheight()
-        pil_img = pil_img.resize((screen_w, screen_h))
+        pil_img = pil_img.resize((img_window.winfo_screenwidth(), img_window.winfo_screenheight()))
         img = ImageTk.PhotoImage(pil_img)
         lbl = tk.Label(img_window, image=img)
         lbl.image = img
@@ -61,13 +57,12 @@ def save_settings(data):
         img_window.after(3700, img_window.destroy)
         play_sound_multiple("data/audio/cat-laugh-meme.wav", count=1, interval=0.2)
         img_window.mainloop()
+        
     os.makedirs(os.path.dirname(SETTINGS_PATH), exist_ok=True)
-
     with open(SETTINGS_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4)
 
     apply_auto_startup_setting(data)
-    
     load_translations(data.get("display_lang", "en"))
 
 active_sounds = []

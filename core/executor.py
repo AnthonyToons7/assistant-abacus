@@ -3,9 +3,6 @@ import json
 import subprocess
 import time
 import pyautogui
-import sys
-import os
-import shutil
 import psutil
 from core.storage import get_app_by_keyword, save_app_by_keyword
 from core.listener import listen_and_recognize, give_audio_response
@@ -14,22 +11,18 @@ from services.WhatsAppService import send_message as send_whatsapp
 from services.DiscordService import send_message as send_discord
 
 def find_app(keyword):
-    # Step 1: Try storage cache
+    # Try storage cache
     app_in_storage = get_app_by_keyword(keyword)
     if app_in_storage is not None:
         return app_in_storage
 
-    # Step 2: Try MS Store apps
+    # MS Store apps
     app_id = find_ms_store_appid(keyword)
     if app_id:
         save_app_by_keyword(keyword, app_id)
         return app_id
 
-    # Step 3: Try to find installed .exe
-    # path = shutil.which(keyword)
-    # if path:
-    #     save_app_by_keyword(keyword, path)
-    #     return path
+    # Try to find installed .exe
     possibleDirectories = [
         os.path.expandvars("%PROGRAMFILES%"),
         os.path.expandvars("%PROGRAMFILES(X86)%"),
@@ -42,8 +35,13 @@ def find_app(keyword):
             for file in files:
                 if file.lower().endswith(".exe") and keyword.lower() in file.lower():
                     path = os.path.join(root, file)
-                    save_app_by_keyword(keyword, path)
-                    return path
+
+                    try:
+                        if os.path.exists(path):
+                            save_app_by_keyword(keyword, path)
+                            return path
+                    except Exception as e:
+                        print(f"Error checking path {path}: {e}")
                 
     return None
 
@@ -71,30 +69,6 @@ def find_ms_store_appid(keyword):
     except Exception as e:
         print("Error:", e)
         return None
-
-# def launch_program(identifier, args=None):
-#     try:
-#         if identifier.endswith(".jpg") or identifier.endswith(".png"):
-#             print("Error: Image files cannot be launched as programs.")
-#             return False
-
-#         if identifier.endswith("!App") or "!" in identifier:
-#             if args:
-#                 os.startfile(args) 
-#             else:
-#                 subprocess.Popen(["explorer.exe", f"shell:AppsFolder\\{identifier}"])
-#             return True
-
-#         cmd = [identifier]
-#         if args:
-#             cmd.append(args)
-        
-#         subprocess.Popen(cmd, creationflags=subprocess.CREATE_NO_WINDOW)
-#         return True
-
-#     except Exception as e:
-#         print(f"Error launching {identifier}: {e}")
-#         return False
 
 def open_program(keyword, args=None):
     app = find_app(keyword)
@@ -125,51 +99,73 @@ def open_program(keyword, args=None):
         print(f"Error launching {keyword}: {e}")
         return False
 
-def message_checklist(application):
+def message_checklist(application=None, source="manual", recipient=None, message_content=None):
     protocols = get_protocol('message-checklist')
-    mockup = {'application': 'whatsapp','receiver': 'anthony (jij)','message': '(automated message)'}
-    message_data = mockup
-    # message_data = {}
-    accepted_confirmations = ['Yes', 'Yeah', 'Correct', 'That\'s right', 'Affirmative', 'Yep']
+    message_data = {
+        'application': (application or '').strip().lower(),
+        'receiver': (recipient or '').strip(),
+        'message': (message_content or '').strip(),
+    }
 
-    give_audio_response('Running checklist...')
+    if(source == "voice"):
+        asked_fields = set()
+        accepted_confirmations = ['Yes', 'Yeah', 'Correct', 'That\'s right', 'Affirmative', 'Yep']
+        give_audio_response('Running checklist...')
 
-    for key, value in protocols.items():
-        if 'voice_message_empty' in value:
-            give_audio_response(value['voice_message_empty'])
-            message_data[key] = listen_and_recognize() or 'Yes'
+        for key, value in protocols.items():
+            if key in message_data and message_data[key]:
+                continue
 
-            # message_data[key] = mockup[key]
-            
-            give_audio_response(message_data[key])
-            time.sleep(0.5)
+            if 'voice_message_empty' in value:
+                give_audio_response(value['voice_message_empty'])
+                message_data[key] = listen_and_recognize() or ''
+                message_data[key] = message_data[key].strip()
+                asked_fields.add(key)
+                give_audio_response(message_data[key])
+                time.sleep(0.5)
 
-    for key, value in protocols.items():
-        if 'voice_message' in value:
-            value['voice_message'] = value['voice_message'].replace(f'[{key}]', message_data[key])
-            give_audio_response(value['voice_message'])
+        for key, value in protocols.items():
+            if key not in asked_fields:
+                continue
 
-            user_answer = listen_and_recognize()
-            
-            if user_answer not in accepted_confirmations:
-                give_audio_response(f'What would you like {message_data[key]} to be?')
-                message_data[key] = listen_and_recognize()
+            if 'voice_message' in value:
+                confirm_message = value['voice_message'].replace(f'[{key}]', message_data[key])
+                give_audio_response(confirm_message)
 
-                print(message_data[key])
-                give_audio_response('Noted.')
+                user_answer = listen_and_recognize()
+                
+                if user_answer not in accepted_confirmations:
+                    give_audio_response(f'What would you like {message_data[key]} to be?')
+                    message_data[key] = listen_and_recognize()
+                    give_audio_response('Noted.')
 
-            time.sleep(0.5)
+                time.sleep(0.5)
 
-    give_audio_response('Sending message . . .')
+    app_name = message_data.get('application', '').lower()
+    receiver = message_data.get('receiver', '').strip()
+    message = message_data.get('message', '').strip()
 
-    open_program(message_data['application'])
+    if not app_name or not receiver or not message:
+        give_audio_response('Missing application, recipient, or message content.')
+        return False
+
+    if(source == 'ai'):
+        message += "\n\n(This message was generated by AI. This message might contain mistakes or errors.)"
 
     application_mapping = {
         "whatsapp": send_whatsapp,
         "discord": send_discord,
     }
 
-    application_mapping[message_data['application'].lower()](message_data['receiver'], message_data['message'])
+    if app_name not in application_mapping:
+        give_audio_response(f"Unsupported messaging app: {app_name}")
+        return False
+
+    give_audio_response('Sending message . . .')
+    open_program(app_name)
+
+    application_mapping[app_name](receiver, message)
+    return True
 
 def search_web(query="", url=""):
     time.sleep(2)

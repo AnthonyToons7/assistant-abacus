@@ -46,6 +46,11 @@
         "description": "Enable free conversation mode with a local model",
         "type": "checkbox"
     },
+    "ai_commands": {
+        "name": "AI command recognition",
+        "description": "Allows the AI mode to recognize commands in your words and execute them. This may be inaccurate. Turn on at your own risk",
+        "type": "checkbox"
+    },
     "ai_model_path": {
         "name": "AI model path",
         "description": "Path to your local GGUF model file",

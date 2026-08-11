@@ -32,11 +32,17 @@ def save_app_by_keyword(keyword, exePath):
         with open(opened_programs_path, "a", encoding="utf-8") as file:
             file.write(f"{keyword}: {exePath}\n")
 
-
 def get_user_data():
+    if not os.path.exists(user_data_path):
+        return {}
+
     with open(user_data_path, 'r', encoding='utf-8') as file:
-        data = json.load(file)
-        return data
+        try:
+            data = json.load(file)
+        except json.JSONDecodeError:
+            return {}
+
+    return data if isinstance(data, dict) else {}
 
 def set_user_data(type_key, value):
     os.makedirs(os.path.dirname(user_data_path), exist_ok=True)
@@ -66,12 +72,6 @@ def save_web_search(data):
 
     with open(file_path, "w", encoding='utf-8') as file:
         json.dump(data, file, indent=4)
-
-def scrape(default_browser):
-    default_browser_directory = get_app_by_keyword(default_browser)
-
-    if(default_browser_directory is None):
-        print('Chat, we don\'t have a browser')
 
 def get_saved_settings():
     path = os.path.join(BASE_DIR, 'data', 'saved-settings.json')

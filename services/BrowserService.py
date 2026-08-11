@@ -3,20 +3,16 @@ import shutil
 import sqlite3
 import tempfile
 import winreg
-import json
 import threading
 import time
 from datetime import datetime, timedelta, timezone
-import schedule
 import tempfile
 from dateutil import parser
 from core.storage import get_user_data, set_user_data
 from services.ErrorLogService import add_log_entry
 
-
 def get_local_timezone():
     return datetime.now().astimezone().tzinfo
-
 
 def to_local_iso(dt):
     if dt is None:
@@ -25,7 +21,6 @@ def to_local_iso(dt):
         dt = dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(get_local_timezone()).isoformat()
 
-
 def parse_timestamp(value):
     if not value:
         return None
@@ -33,7 +28,6 @@ def parse_timestamp(value):
     if ts.tzinfo is None:
         ts = ts.replace(tzinfo=get_local_timezone())
     return ts
-
 
 def normalize_browser_data(raw_browser_data):
     if isinstance(raw_browser_data, str):
@@ -223,8 +217,7 @@ def get_firefox_history():
 
 def yoink_browser_history():
     try:
-        prog_id = get_default_browser()
-        prog_id = prog_id.lower()
+        prog_id = get_default_browser().lower()
 
         if "chrome" in prog_id:
             history = get_chrome_history()

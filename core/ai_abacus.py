@@ -1,11 +1,12 @@
 import os
+import re
 import threading
 import json
 import datetime
 import random
 import string
-
 from typing import List, Dict
+from core.filter import filter
 
 try:
     from llama_cpp import Llama
@@ -91,11 +92,17 @@ class AiAbacus:
             self.load_model(settings)
 
             system_prompt = settings.get("ai_system_prompt", DEFAULT_SYSTEM_PROMPT).strip() or DEFAULT_SYSTEM_PROMPT
+            command_recognition = settings.get("ai_system_command_recognition", "").strip()
             max_tokens = int(settings.get("ai_max_tokens", 120))
             temperature = float(settings.get("ai_temperature", 0.6))
 
             history_tail = self.history[-12:]
+            
             prompt_parts = [f"System: {system_prompt}"]
+            
+            if settings.get("ai_commands", True):
+                prompt_parts.append(f"+ System Command Recognition: {command_recognition}")
+
             for msg in history_tail:
                 role = msg.get("role", "user").capitalize()
                 content = msg.get("content", "")
@@ -117,6 +124,21 @@ class AiAbacus:
 
             self.history.append({"role": "user", "content": user_text})
             self.history.append({"role": "assistant", "content": assistant_text})
+
+            if '[COMMAND:' in assistant_text and settings.get("ai_commands", True):
+                command_start = assistant_text.find('[COMMAND:')
+                command_end = assistant_text.find(']', command_start)
+                if command_end != -1:
+                    command_block = assistant_text[command_start:command_end + 1]
+                    command_match = re.search(r"\[COMMAND:\s*(.*?)\s*\]", command_block, re.IGNORECASE)
+                    if command_match:
+                        command_text = command_match.group(1).strip()
+                        if command_text:
+                            try:
+                                filter(command_text, source="ai")
+                            except Exception as e:
+                                print(f"Error executing command: {e}")
+
             return assistant_text
 
 ai_abacus = AiAbacus()

@@ -7,6 +7,7 @@ import numpy as np
 import time 
 import tkinter as tk
 import threading
+import subprocess
 import pyaudio
 import winsound
 import sys, os
@@ -19,15 +20,15 @@ from win32api import *
 from win32gui import *
 import win32con
 from PyQt5 import QtGui
-from PyQt5.QtWidgets import QLabel, QApplication, QWidget, QOpenGLWidget, QGraphicsOpacityEffect, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton, QFrame, QScrollArea
-from PyQt5.QtGui import QPixmap, QFont, QImage, QSurfaceFormat, QColor, QPainter, QBrush, QPen
+from PyQt5.QtWidgets import QLabel, QApplication, QWidget, QOpenGLWidget, QGraphicsOpacityEffect, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton, QFrame, QScrollArea, QShortcut
+from PyQt5.QtGui import QPixmap, QFont, QImage, QSurfaceFormat, QColor, QPainter, QBrush, QPen, QKeySequence
 from PyQt5.QtCore import Qt, QTimer, QRect, QPropertyAnimation, QPoint, QEasingCurve, pyqtSignal
 
 from OpenGL.GL import *
 from OpenGL.GLU import *
 
 from core.translations import load_translations, t
-from core.storage import get_saved_settings
+from core.storage import get_saved_settings, get_user_data, set_user_data
 from core.settings import save_settings
 from ui.settings_ui import open_settings_window
 
@@ -63,17 +64,9 @@ def open_manual_input(prompt=None):
     return result['text']
 
 
-def show_settings_panel(save_callback=save_settings):
-    with open("core/settings/available-settings.json", "r", encoding="utf-8") as f:
-        settings = json.load(f)
-
-    open_settings_window(
-        t=t,
-        get_saved_settings=get_saved_settings,
-        get_audio_inputs=get_audio_inputs,
-        settings=settings,
-        save_callback=save_callback,
-    )
+def show_settings_panel(save_callback=save_settings, setting_actions=None, initial_tab="settings"):
+    launcher_path = os.path.join(os.path.dirname(__file__), "settings_launcher.py")
+    subprocess.Popen([sys.executable, launcher_path, initial_tab], cwd=os.path.dirname(os.path.dirname(__file__)))
 
 class AbacusSprite(QLabel):
     def __init__(
@@ -85,6 +78,13 @@ class AbacusSprite(QLabel):
     ):
         self.on_click = on_click
         self.chat_dock = None
+        self.drag_enabled = False
+        self.dragging = False
+        self.drag_offset = QPoint()
+        self.hotkey_enabled = False
+        self._hotkey_shortcut = None
+        self.drag_controls = None
+        self.drag_origin_pos = None
         super().__init__()
 
         self.sheet = QPixmap(sheet_dir)
@@ -121,19 +121,137 @@ class AbacusSprite(QLabel):
             self.screen.height() - self.display_height - 40
         )
         self.move(self.default_pos)
+        self.setup_hotkey()
         self.show()
 
     def attach_chat_dock(self, chat_dock):
         self.chat_dock = chat_dock
+
+    def setup_hotkey(self):
+        if self._hotkey_shortcut is not None:
+            return
+        self._hotkey_shortcut = QShortcut(QKeySequence("Ctrl+Alt+Shift+A"), self)
+        self._hotkey_shortcut.activated.connect(self._trigger_hotkey_action)
+
+    def _build_drag_controls(self):
+        if self.drag_controls is not None:
+            return self.drag_controls
+
+        self.drag_controls = QWidget(self)
+        self.drag_controls.setAttribute(Qt.WA_TranslucentBackground)
+        self.drag_controls.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
+        self.drag_controls.setFixedSize(112, 32)
+        self.drag_controls.setStyleSheet("background: transparent;")
+
+        layout = QHBoxLayout(self.drag_controls)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6)
+
+        confirm_btn = QPushButton("✓", self.drag_controls)
+        confirm_btn.setFixedSize(48, 28)
+        confirm_btn.setCursor(Qt.PointingHandCursor)
+        confirm_btn.setStyleSheet(
+            "QPushButton { background: #2ecc71; color: white; border: none; border-radius: 10px; font: 11px 'Segoe UI Semibold'; }"
+            "QPushButton:hover { background: #27ae60; }"
+        )
+        confirm_btn.clicked.connect(self.confirm_drag_position)
+
+        cancel_btn = QPushButton("✕", self.drag_controls)
+        cancel_btn.setFixedSize(48, 28)
+        cancel_btn.setCursor(Qt.PointingHandCursor)
+        cancel_btn.setStyleSheet(
+            "QPushButton { background: #e74c3c; color: white; border: none; border-radius: 10px; font: 11px 'Segoe UI Semibold'; }"
+            "QPushButton:hover { background: #c0392b; }"
+        )
+        cancel_btn.clicked.connect(self.cancel_drag_position)
+
+        layout.addWidget(confirm_btn)
+        layout.addWidget(cancel_btn)
+        return self.drag_controls
+
+    def show_drag_controls(self):
+        controls = self._build_drag_controls()
+        controls.move(self.width() // 2 - controls.width() // 2, -38)
+        controls.raise_()
+        controls.show()
+
+    def hide_drag_controls(self):
+        if self.drag_controls is not None:
+            self.drag_controls.hide()
+
+    def _trigger_hotkey_action(self):
+        if not self.hotkey_enabled:
+            return
+        if self.chat_dock is not None:
+            self.chat_dock.show_chat()
+            self.chat_dock.focus_input()
+        else:
+            self.prompt_window = PromptInputWindow()
+            self.prompt_window.show()
+
+    def set_hotkey_enabled(self, enabled):
+        self.hotkey_enabled = bool(enabled)
+        self.setToolTip("Hotkey ready" if self.hotkey_enabled else "Hotkey disabled")
+
+    def enter_drag_mode(self):
+        self.drag_enabled = True
+        self.dragging = False
+        self.drag_origin_pos = self.pos()
+        self.setCursor(Qt.OpenHandCursor)
+        self.setToolTip("Drag mode enabled — move me around")
+        self.show_drag_controls()
+
+    def persist_sprite_position(self):
+        data = dict(get_saved_settings())
+        data["sprite_position"] = [int(self.pos().x()), int(self.pos().y())]
+        save_settings(data)
+
+    def confirm_drag_position(self):
+        self.hide_drag_controls()
+        self.drag_enabled = False
+        self.dragging = False
+        self.default_pos = self.pos()
+        self.persist_sprite_position()
+        self.setCursor(Qt.ArrowCursor)
+
+    def cancel_drag_position(self):
+        self.hide_drag_controls()
+        self.drag_enabled = False
+        self.dragging = False
+        if self.drag_origin_pos is not None:
+            self.move(self.drag_origin_pos)
+            self.default_pos = self.drag_origin_pos
+        self.setCursor(Qt.ArrowCursor)
 
     def apply_saved_settings(self, saved=None):
         saved = saved or get_saved_settings()
         should_show = bool(saved.get("toggle_sprite", True))
         self.setVisible(should_show)
 
+        sprite_position = saved.get("sprite_position")
+        if isinstance(sprite_position, (list, tuple)) and len(sprite_position) >= 2:
+            x = int(sprite_position[0])
+            y = int(sprite_position[1])
+            self.move(x, y)
+            self.default_pos = QPoint(x, y)
+
+        self.set_hotkey_enabled(bool(saved.get("hotkey_activation", False)))
+
     def handle_settings_save(self, data):
         save_settings(data)
         self.apply_saved_settings(data)
+
+    def handle_setting_action(self, key):
+        if key == "drag_to_move_sprite":
+            self.enter_drag_mode()
+            return
+
+        if key == "hotkey_activation":
+            next_value = not bool(get_saved_settings().get("hotkey_activation", False))
+            data = dict(get_saved_settings())
+            data[key] = next_value
+            self.handle_settings_save(data)
+            self.set_hotkey_enabled(next_value)
 
     def jump_on_notif(self, height=100, duration=500):
         """Animate sprite to jump up 'height' pixels"""
@@ -181,8 +299,20 @@ class AbacusSprite(QLabel):
         self.direction = -1
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton and self.on_click:
-            self.on_click()
+        if event.button() == Qt.LeftButton:
+            if self.drag_enabled:
+                self.dragging = True
+                self.drag_offset = event.globalPos() - self.pos()
+                event.accept()
+                return
+            if self.on_click:
+                self.on_click()
+            if self.chat_dock is not None:
+                self.chat_dock.show_chat()
+                self.chat_dock.focus_input()
+            else:
+                self.prompt_window = PromptInputWindow()
+                self.prompt_window.show()
         elif event.button() == Qt.MiddleButton:
             if self.chat_dock:
                 self.chat_dock.show_chat()
@@ -191,7 +321,39 @@ class AbacusSprite(QLabel):
                 self.prompt_window = PromptInputWindow()
                 self.prompt_window.show()
         elif event.button() == Qt.RightButton:
-            show_settings_panel(self.handle_settings_save)
+            show_settings_panel(
+                self.handle_settings_save,
+                setting_actions={
+                    "drag_to_move_sprite": lambda: self.handle_setting_action("drag_to_move_sprite"),
+                    "hotkey_activation": lambda: self.handle_setting_action("hotkey_activation"),
+                },
+            )
+
+    def _get_clamped_position(self, x, y):
+        screen = QApplication.primaryScreen().availableGeometry()
+        max_x = max(0, screen.width() - self.display_width)
+        max_y = max(0, screen.height() - self.display_height - 8)
+        x = max(0, min(int(x), max_x))
+        y = max(0, min(int(y), max_y))
+        return x, y
+
+    def mouseMoveEvent(self, event):
+        if self.drag_enabled and self.dragging:
+            new_pos = event.globalPos() - self.drag_offset
+            clamped_x, clamped_y = self._get_clamped_position(new_pos.x(), new_pos.y())
+            self.move(QPoint(clamped_x, clamped_y))
+            self.default_pos = QPoint(clamped_x, clamped_y)
+            if self.drag_controls is not None:
+                self.drag_controls.move(self.width() // 2 - self.drag_controls.width() // 2, -38)
+            event.accept()
+
+    def mouseReleaseEvent(self, event):
+        if self.drag_enabled and self.dragging:
+            self.dragging = False
+            self.setCursor(Qt.OpenHandCursor)
+            self.show_drag_controls()
+            event.accept()
+            return
 
 class PromptInputWindow(QWidget):
     def __init__(self):
@@ -217,6 +379,12 @@ class PromptInputWindow(QWidget):
         inner = QVBoxLayout(card)
         inner.setContentsMargins(14, 12, 14, 12)
         inner.setSpacing(9)
+
+        self.suggestion_templates = {
+            "Startup": "startup",
+            "Play Music": "play the song <song name>",
+            "Web Search": "search <query>",
+        }
 
         title_row = QHBoxLayout()
         title = QLabel("Message A.B.A.C.U.S.", card)
@@ -248,6 +416,36 @@ class PromptInputWindow(QWidget):
         line.setFixedHeight(1)
         line.setStyleSheet("background: rgba(110, 163, 255, 90);")
         inner.addWidget(line)
+
+        suggestion_row = QHBoxLayout()
+        suggestion_row.setContentsMargins(0, 0, 0, 0)
+        suggestion_row.setSpacing(6)
+
+        for suggestion, template in self.suggestion_templates.items():
+            suggestion_btn = QPushButton(suggestion, card)
+            suggestion_btn.setCursor(Qt.PointingHandCursor)
+            suggestion_btn.setStyleSheet(
+                """
+                QPushButton {
+                    color: #d9e3f7;
+                    background: rgba(165, 171, 184, 70);
+                    border: 1px solid rgba(192, 198, 214, 95);
+                    border-radius: 10px;
+                    padding: 4px 10px;
+                    font: 9px 'Segoe UI Semibold';
+                }
+                QPushButton:hover {
+                    background: rgba(194, 201, 214, 95);
+                    border: 1px solid rgba(218, 224, 236, 145);
+                    color: #ffffff;
+                }
+                """
+            )
+            suggestion_btn.clicked.connect(lambda _=False, t=template: self.handle_suggestion_click(t))
+            suggestion_row.addWidget(suggestion_btn)
+
+        suggestion_row.addStretch()
+        inner.addLayout(suggestion_row)
 
         input_row = QHBoxLayout()
         input_row.setContentsMargins(0, 2, 0, 0)
@@ -294,6 +492,19 @@ class PromptInputWindow(QWidget):
         screen = QApplication.primaryScreen().geometry()
         self.move(screen.width() - self.width() - 20,
                   screen.height() - self.height() - 220)
+
+    def handle_suggestion_click(self, template):
+        text = str(template or "").strip()
+        if not text:
+            return
+        self.input.setText(text)
+        self.input.setFocus()
+
+        placeholder_index = text.find("<")
+        if placeholder_index != -1:
+            self.input.setCursorPosition(placeholder_index)
+        else:
+            self.input.setCursorPosition(len(text))
 
     def submit(self):
         text = self.input.text().strip()
@@ -472,6 +683,11 @@ class ChatDock(QWidget):
         self.scroll_anim = None
         self.is_typing = False
         self.typing_bubble = None
+        self.suggestion_templates = {
+            "Startup": "startup",
+            "Play Music": "play the song <song name>",
+            "Web Search": "search <query>",
+        }
 
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
         self.setAttribute(Qt.WA_TranslucentBackground)
@@ -498,13 +714,19 @@ class ChatDock(QWidget):
 
         self.settings_btn = QPushButton("Settings", header)
         self.settings_btn.setCursor(Qt.PointingHandCursor)
-        self.settings_btn.setFixedSize(48, 22)
+        self.settings_btn.setFixedSize(58, 22)
         self.settings_btn.clicked.connect(self.open_settings)
         header_layout.addWidget(self.settings_btn)
 
+        self.schedule_btn = QPushButton("Schedule", header)
+        self.schedule_btn.setCursor(Qt.PointingHandCursor)
+        self.schedule_btn.setFixedSize(66, 22)
+        self.schedule_btn.clicked.connect(self.open_schedule)
+        header_layout.addWidget(self.schedule_btn)
+
         self.bg_toggle = QPushButton("Background", header)
         self.bg_toggle.setCursor(Qt.PointingHandCursor)
-        self.bg_toggle.setFixedSize(75, 22)
+        self.bg_toggle.setFixedSize(78, 22)
         self.bg_toggle.clicked.connect(self.toggle_background)
         header_layout.addWidget(self.bg_toggle)
         card_layout.addWidget(header)
@@ -526,8 +748,42 @@ class ChatDock(QWidget):
 
         input_wrap = QWidget(self.card)
         input_wrap.setObjectName("chatInputWrap")
-        input_layout = QHBoxLayout(input_wrap)
-        input_layout.setContentsMargins(10, 8, 10, 10)
+        input_outer = QVBoxLayout(input_wrap)
+        input_outer.setContentsMargins(10, 8, 10, 10)
+        input_outer.setSpacing(6)
+
+        suggestion_row = QHBoxLayout()
+        suggestion_row.setContentsMargins(0, 0, 0, 0)
+        suggestion_row.setSpacing(6)
+
+        for suggestion, template in self.suggestion_templates.items():
+            suggestion_btn = QPushButton(suggestion, input_wrap)
+            suggestion_btn.setCursor(Qt.PointingHandCursor)
+            suggestion_btn.setStyleSheet(
+                """
+                QPushButton {
+                    color: #d9e3f7;
+                    background: rgba(165, 171, 184, 70);
+                    border: 1px solid rgba(192, 198, 214, 95);
+                    border-radius: 10px;
+                    padding: 4px 10px;
+                    font: 9px 'Segoe UI Semibold';
+                }
+                QPushButton:hover {
+                    background: rgba(194, 201, 214, 95);
+                    border: 1px solid rgba(218, 224, 236, 145);
+                    color: #ffffff;
+                }
+                """
+            )
+            suggestion_btn.clicked.connect(lambda _=False, t=template: self.handle_suggestion_click(t))
+            suggestion_row.addWidget(suggestion_btn)
+
+        suggestion_row.addStretch()
+        input_outer.addLayout(suggestion_row)
+
+        input_layout = QHBoxLayout()
+        input_layout.setContentsMargins(0, 0, 0, 0)
         input_layout.setSpacing(8)
 
         self.input = QLineEdit(input_wrap)
@@ -540,6 +796,7 @@ class ChatDock(QWidget):
         self.send_btn.setFixedSize(34, 34)
         self.send_btn.clicked.connect(self.submit_message)
         input_layout.addWidget(self.send_btn)
+        input_outer.addLayout(input_layout)
         card_layout.addWidget(input_wrap)
 
         self.setStyleSheet(
@@ -679,9 +936,27 @@ class ChatDock(QWidget):
 
     def open_settings(self):
         save_callback = save_settings
+        setting_actions = {}
         if self.sprite is not None and hasattr(self.sprite, "handle_settings_save"):
             save_callback = self.sprite.handle_settings_save
-        show_settings_panel(save_callback)
+            if hasattr(self.sprite, "handle_setting_action"):
+                setting_actions = {
+                    "drag_to_move_sprite": lambda: self.sprite.handle_setting_action("drag_to_move_sprite"),
+                    "hotkey_activation": lambda: self.sprite.handle_setting_action("hotkey_activation"),
+                }
+        show_settings_panel(save_callback, setting_actions=setting_actions, initial_tab="settings")
+
+    def open_schedule(self):
+        save_callback = save_settings
+        setting_actions = {}
+        if self.sprite is not None and hasattr(self.sprite, "handle_settings_save"):
+            save_callback = self.sprite.handle_settings_save
+            if hasattr(self.sprite, "handle_setting_action"):
+                setting_actions = {
+                    "drag_to_move_sprite": lambda: self.sprite.handle_setting_action("drag_to_move_sprite"),
+                    "hotkey_activation": lambda: self.sprite.handle_setting_action("hotkey_activation"),
+                }
+        show_settings_panel(save_callback, setting_actions=setting_actions, initial_tab="schedule")
 
     def show_chat(self):
         if not self.is_hidden:
@@ -733,8 +1008,24 @@ class ChatDock(QWidget):
         if handler:
             threading.Thread(target=handler, args=(text, "manual"), daemon=True).start()
 
+    def handle_suggestion_click(self, template):
+        text = str(template or "").strip()
+        if not text:
+            return
+        self.input.setText(text)
+        self.input.setFocus()
+
+        placeholder_index = text.find("<")
+        if placeholder_index != -1:
+            self.input.setCursorPosition(placeholder_index)
+        else:
+            self.input.setCursorPosition(len(text))
+
     def enqueue_message(self, role, text, session_id=""):
-        self.append_message_signal.emit(role, text, session_id or "")
+        if isinstance(session_id, tuple):
+            session_id = session_id[0] if session_id else ""
+        session_id = "" if session_id is None else str(session_id)
+        self.append_message_signal.emit(str(role), str(text), session_id)
 
     def is_near_bottom(self, threshold=40):
         bar = self.scroll.verticalScrollBar()
@@ -759,6 +1050,9 @@ class ChatDock(QWidget):
         self.scroll_anim.start()
 
     def append_message(self, role, text, session_id=""):
+        if isinstance(session_id, tuple):
+            session_id = session_id[0] if session_id else ""
+        session_id = "" if session_id is None else str(session_id)
         if session_id:
             self.session_label.setText(f"Session: {session_id[:12]}")
 
@@ -831,7 +1125,7 @@ def show_toast(title, msg, sprite=None, sound_file="", duration="short"):
     if sprite is not None:
         sprite.jump_on_notif(height=150, duration=600)
 
-    toast = Notification(app_id="ABACUS", title=title, msg=msg, duration=duration)
+    toast = Notification(app_id="A.B.A.C.U.S.", title=title, msg=msg, duration=duration)
     toast.set_audio(audio.Mail, loop=False)
 
     threading.Thread(target=toast.show, daemon=True).start()

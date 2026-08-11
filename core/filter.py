@@ -1,23 +1,59 @@
 import re
 import os
-import sys
-import threading
-from PyQt5.QtWidgets import QApplication
 
 from core.web import search_web
 from core.executor import open_program, message_checklist
 from services.SpotifyService import run as spotify_run
 from services.CalendarService import startup, schedule_checklist
 
+
+def clean_fragment(value):
+    if value is None:
+        return ""
+    return re.sub(r"^[\s,.:;\-]+|[\s,.:;\-]+$", "", str(value)).strip()
+
+
+def parse_send_command(raw_text):
+    parsed = {
+        "application": "",
+        "recipient": "",
+        "message_content": "",
+    }
+
+    content_match = re.search(r"\bcontent\b\s*:\s*(.+)$", raw_text, re.IGNORECASE)
+    if content_match:
+        parsed["message_content"] = clean_fragment(content_match.group(1))
+
+    app_match = re.search(r"\b(?:on|via|through)\s+(whatsapp|discord)\b", raw_text, re.IGNORECASE)
+    if app_match:
+        parsed["application"] = clean_fragment(app_match.group(1)).lower()
+
+    recipient_patterns = [
+        r"\bsend\s+(.+?)\s+(?:a\s+)?message\b",
+        r"\bsend\s+(?:a\s+)?message\s+to\s+(.+?)(?:\s+(?:on|via|through)\b|,|$)",
+        r"\bto\s+(.+?)(?:\s+(?:on|via|through)\b|,|$)",
+    ]
+
+    for pattern in recipient_patterns:
+        match = re.search(pattern, raw_text, re.IGNORECASE)
+        if match:
+            parsed["recipient"] = clean_fragment(match.group(1))
+            break
+
+    return parsed
+
 def filter(text, source):
+    raw_text = text
     text = text.lower()
-    activation_commands = ['send', 'open', 'fetch', 'search', 'look', 'settings', 'play', 'pause', 'resume', 'skip', 'startup', 'schedule', 'plan', 'add', 'kys']
+    activation_commands = ['send', 'open', 'fetch', 'search', 'look', 'settings', 'play', 'pause', 'resume', 'skip', 'startup', 'schedule', 'plan', 'add', 'exit']
 
     split_text = text.split(' ')
     application = ''
     activation_word = ''
     activation_prompt = ''
     search_prompt = ''
+    recipient = ''
+    message_content = ''
 
     for i, word in enumerate(split_text):
         if word in activation_commands:
@@ -28,9 +64,11 @@ def filter(text, source):
                 application = split_text[i + 1]
             break
 
-        if activation_word == 'send' and word == 'on':
-            if i + 1 < len(split_text):
-                application = split_text[i + 1]
+        if activation_word == 'send':
+            send_data = parse_send_command(raw_text)
+            application = send_data.get('application', '')
+            recipient = send_data.get('recipient', '')
+            message_content = send_data.get('message_content', '')
             break
   
         if activation_word == 'search' or (activation_word == 'look' and word == 'up'):
@@ -57,18 +95,16 @@ def filter(text, source):
             break;
 
         if activation_word in ['schedule', 'plan', 'add']:
-            print("Scheduling command detected")
             if 'event' in text or 'calendar' in text:
-                print("Calendar event command detected")
                 activation_word = 'schedule'
                 break
 
-        if activation_word == 'kys':
+        if activation_word == 'exit':
             os._exit(1)
 
     match activation_word:
         case 'send':
-            message_checklist(application, source)
+            message_checklist(application, source, recipient, message_content)
         case 'open':
             open_program(application)
         case 'search':

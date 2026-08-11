@@ -1,4 +1,4 @@
-# Abacus
+# A.B.A.C.U.S.
 'Absolutely Brutal And Completely Unhinged Sociopath' or A.B.A.C.U.S., is an small voice 'assistant' system made by me. I designed him to help with small tasks and make my life a little bit easier and more fun.
 
 ## How does Abacus work?
@@ -191,3 +191,8 @@ For fully local voice loop:
 # Log 10-8-26
 - Added error log service
 - Additional settings
+
+
+# Log 12-8-26
+- Bugfixes
+- Code cleanup

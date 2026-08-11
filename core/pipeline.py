@@ -27,20 +27,20 @@ def register_chat_listener(listener):
     if callable(listener) and listener not in chat_listeners:
         chat_listeners.append(listener)
 
-
 def register_typing_listener(listener):
     if callable(listener) and listener not in typing_listeners:
         typing_listeners.append(listener)
 
-
 def emit_chat(role, message, session_id=""):
+    if isinstance(session_id, tuple):
+        session_id = session_id[0] if session_id else ""
+    session_id = "" if session_id is None else str(session_id)
     for listener in list(chat_listeners):
         try:
             listener(role, message, session_id)
         except Exception as e:
             print(f"Chat listener error: {e}")
             add_log_entry("Chat listener error", str(e), type(e).__name__)
-
 
 def emit_typing(is_typing):
     for listener in list(typing_listeners):
@@ -72,12 +72,10 @@ def analyze_user_audio(text):
 def get_on_speech():
     return on_speech
 
-
 def _speak_if_enabled(message):
     settings = get_saved_settings()
     if settings.get("audio_response", False):
         give_audio_response(message)
-
 
 def handle_ai_chat(text):
     try:
@@ -119,19 +117,19 @@ def _on_speech_handler(text, source):
     settings = get_saved_settings()
     ai_mode = settings.get("ai_mode", False)
 
-    result = filter(text, source)
-
-    if result:
-        print("Waiting...")
-        emit_chat("assistant", "Working on that...", ai_abacus.session_id or "")
-        return
-
     if ai_mode:
         emit_typing(True)
         try:
             handle_ai_chat(text)
         finally:
             emit_typing(False)
+        return
+
+    result = filter(text, source)
+
+    if result:
+        print("Waiting...")
+        emit_chat("assistant", "Working on that...", ai_abacus.session_id or "")
         return
 
     print("Unknown command")
@@ -147,13 +145,3 @@ def start():
     if on_speech is None:
         init_pipeline()
     threading.Thread(target=start_always_on, args=(on_speech,), daemon=True).start()
-
-    # TODO: REMOVE
-    # OLD OPTION FOR LISTENING
-    # Default test message
-    # text = 'Abacus, play my playlist soft rock'
-    
-    # text = listen_and_recognize()
-    
-    # print("Input: [ ", text, " ]")
-    # analyze_user_audio(text.lower())

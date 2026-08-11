@@ -1,15 +1,13 @@
-import os
 import json
 import time
 import schedule
-import tempfile
 import dateparser
 from datetime import datetime, timedelta, timezone, date
 from dateutil import parser
 
 from core.storage import get_user_data, set_user_data
 from core.listener import give_audio_response
-from core.executor import find_app, open_program, give_audio_response, search_web, listen_and_recognize
+from core.executor import open_program, give_audio_response, listen_and_recognize
 from ui.popup import open_manual_input, show_toast
 
 def get_events():
@@ -19,7 +17,6 @@ def get_events():
     if isinstance(raw_calendar, list):
         return raw_calendar
 
-    # Recover from legacy/corrupted shapes where calendar is stored as an object.
     if isinstance(raw_calendar, dict):
         nested_calendar = raw_calendar.get("calendar")
         if isinstance(nested_calendar, list):
@@ -66,11 +63,6 @@ def check_reminders():
             reminder_time_local = reminder_time.astimezone(local_tz)
             now_local = now_dt.astimezone(local_tz)
             difference = now_dt - reminder_time_utc
-
-            # print(
-            #     f"Reminder time (local): {reminder_time_local}, "
-            #     f"Now (local): {now_local}, Difference: {difference.total_seconds()} seconds"
-            # )
 
             if reminder_time_utc <= now_dt and difference.total_seconds() < 60:
                 event_title = event.get('title', 'Event')
@@ -140,7 +132,6 @@ def startup():
     else:
         give_audio_response(f'{greeting}, {user_data["name"]}. Day off? Enjoy your day!')
         open_program('Firefox', 'https://youtube.com')
-        # search_web("", 'https://youtube.com')
 
 def get_greeting(time):
     if time < 12:
