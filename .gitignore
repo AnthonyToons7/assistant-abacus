@@ -8,6 +8,7 @@ data/user-data.json
 data/logs/*
 data/audio-logs/*
 data/web_searches/*
+data/tournaments.json
 .env
 spotify_token.json
 data/saved-settings.json

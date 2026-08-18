@@ -13,6 +13,8 @@ from core.storage import get_saved_settings, get_user_data, set_user_data
 from core.settings import save_settings
 from core.translations import load_translations, t
 
+TOURNAMENTS_PATH = os.path.join(ROOT_DIR, "data", "tournaments.json")
+
 
 def get_audio_inputs():
     p = pyaudio.PyAudio()
@@ -23,6 +25,30 @@ def get_audio_inputs():
             devices.append({"index": i, "name": info["name"]})
     p.terminate()
     return devices
+
+
+def get_tournaments_data():
+    if not os.path.exists(TOURNAMENTS_PATH):
+        return []
+
+    with open(TOURNAMENTS_PATH, "r", encoding="utf-8") as f:
+        try:
+            raw = json.load(f)
+        except json.JSONDecodeError:
+            return []
+
+    if isinstance(raw, list):
+        return raw
+    if isinstance(raw, dict) and isinstance(raw.get("tournaments"), list):
+        return raw.get("tournaments")
+    return []
+
+
+def set_tournaments_data(entries):
+    os.makedirs(os.path.dirname(TOURNAMENTS_PATH), exist_ok=True)
+    payload = entries if isinstance(entries, list) else []
+    with open(TOURNAMENTS_PATH, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=4)
 
 
 def main():
@@ -61,8 +87,6 @@ def main():
         initial_tab=initial_tab,
         get_calendar_events=get_calendar_events,
         set_calendar_events=set_calendar_events,
+        get_tournaments_data=get_tournaments_data,
+        set_tournaments_data=set_tournaments_data,
     )
-
-
-if __name__ == "__main__":
-    main()

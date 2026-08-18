@@ -21,7 +21,6 @@ def main():
     sprite.apply_saved_settings(saved)
     register_chat_listener(chat_dock.enqueue_message)
     register_typing_listener(chat_dock.set_typing_state)
-    # show_toast("App has started", "A.B.A.C.U.S. is running!", sprite)
     sys.exit(app.exec_())
 
 if __name__ == "__main__":

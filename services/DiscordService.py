@@ -13,7 +13,7 @@ def send_message(receiver, message):
     pyautogui.press('enter')
     time.sleep(1)
     pyautogui.write(message)
-    # pyautogui.press('enter')
+    pyautogui.press('enter')
 
 def attach_image(path, message, file_path):
     time.sleep(3)
@@ -38,4 +38,4 @@ def attach_image(path, message, file_path):
     pyautogui.press('enter')
     time.sleep(1)
     pyautogui.write(message)
-    # pyautogui.press('enter')
+    pyautogui.press('enter')

@@ -6,12 +6,10 @@ from core.executor import open_program, message_checklist
 from services.SpotifyService import run as spotify_run
 from services.CalendarService import startup, schedule_checklist
 
-
 def clean_fragment(value):
     if value is None:
         return ""
     return re.sub(r"^[\s,.:;\-]+|[\s,.:;\-]+$", "", str(value)).strip()
-
 
 def parse_send_command(raw_text):
     parsed = {
@@ -20,18 +18,22 @@ def parse_send_command(raw_text):
         "message_content": "",
     }
 
-    content_match = re.search(r"\bcontent\b\s*:\s*(.+)$", raw_text, re.IGNORECASE)
+    content_match = re.search(r"\bcontent\b\s*:\s*(.+?)]?\s*$", raw_text, re.IGNORECASE)
     if content_match:
         parsed["message_content"] = clean_fragment(content_match.group(1))
+    else:
+        with_match = re.search(r"\bwith\s+(.+?)]?\s*$", raw_text, re.IGNORECASE)
+        if with_match:
+            parsed["message_content"] = clean_fragment(with_match.group(1))
 
     app_match = re.search(r"\b(?:on|via|through)\s+(whatsapp|discord)\b", raw_text, re.IGNORECASE)
     if app_match:
         parsed["application"] = clean_fragment(app_match.group(1)).lower()
 
     recipient_patterns = [
-        r"\bsend\s+(.+?)\s+(?:a\s+)?message\b",
-        r"\bsend\s+(?:a\s+)?message\s+to\s+(.+?)(?:\s+(?:on|via|through)\b|,|$)",
-        r"\bto\s+(.+?)(?:\s+(?:on|via|through)\b|,|$)",
+        r"\bsend\s+(?:a\s+)?message\s+to\s+(.+?)(?=\s+(?:on|via|through)\s+(?:whatsapp|discord)\b|\s+with\b|\s+content\s*:|,|$)",
+        r"\bto\s+(.+?)(?=\s+(?:on|via|through)\s+(?:whatsapp|discord)\b|\s+with\b|\s+content\s*:|,|$)",
+        r"\bsend\s+(.+?)\s+(?:a\s+)?message\s+(?=on|via|through)\b",
     ]
 
     for pattern in recipient_patterns:
@@ -45,7 +47,7 @@ def parse_send_command(raw_text):
 def filter(text, source):
     raw_text = text
     text = text.lower()
-    activation_commands = ['send', 'open', 'fetch', 'search', 'look', 'settings', 'play', 'pause', 'resume', 'skip', 'startup', 'schedule', 'plan', 'add', 'exit']
+    activation_commands = ['send', 'open', 'fetch', 'search', 'look', 'play', 'pause', 'resume', 'skip', 'startup', 'schedule', 'plan', 'add', 'exit']
 
     split_text = text.split(' ')
     application = ''

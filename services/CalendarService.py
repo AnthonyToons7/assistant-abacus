@@ -170,7 +170,7 @@ def schedule_checklist(source):
     if source == "voice":
         for field_key, field_value in required_fields.items():
             give_audio_response(field_value["question"])
-            data[field_key] = listen_and_recognize() if source == "voice" else open_manual_input(field_value["question"])
+            data[field_key] = listen_and_recognize()
 
     data['title'] = 'New event'
     data['description'] = 'New event with early reminder'
@@ -201,8 +201,6 @@ def schedule_checklist(source):
     give_audio_response("Event added.")
 
 def json_serial(obj):
-    """JSON serializer for objects not serializable by default json code"""
-
     if isinstance(obj, (datetime, date)):
         return obj.isoformat()
     raise TypeError ("Type %s not serializable" % type(obj))

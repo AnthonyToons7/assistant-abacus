@@ -875,6 +875,646 @@ def _build_schedule_tab(parent, events_getter, events_setter):
     return rebuild
 
 
+def build_tournaments_tab(parent, tournaments_getter, tournaments_setter):
+    tournament_types = ["Local", "Regional", "National", "OTS Championship", "YCS", "EUWCQ"]
+    subtab_titles = ["Winrate Timeline", "Vs Players", "Opponent Decks", "Overview"]
+
+    shell = tk.Frame(parent, bg=BG)
+    shell.pack(fill=tk.BOTH, expand=True)
+
+    canvas = tk.Canvas(shell, bg=BG, highlightthickness=0, bd=0)
+    scrollbar = tk.Scrollbar(
+        shell,
+        orient="vertical",
+        command=canvas.yview,
+        bg=PANEL,
+        troughcolor=BG,
+        activebackground=ACCENT,
+        relief="flat",
+        width=10,
+    )
+
+    root = tk.Frame(canvas, bg=BG)
+    root.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+
+    root_window = canvas.create_window((0, 0), window=root, anchor="nw")
+    canvas.configure(yscrollcommand=scrollbar.set)
+    canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+    def resize_scroll_content(event):
+        canvas.itemconfigure(root_window, width=event.width)
+
+    def on_mouse_wheel(event):
+        canvas.yview_scroll(int(-1 * event.delta / 120), "units")
+
+    def bind_mouse_wheel(_event):
+        canvas.bind_all("<MouseWheel>", on_mouse_wheel)
+
+    def unbind_mouse_wheel(_event):
+        canvas.unbind_all("<MouseWheel>")
+
+    canvas.bind("<Configure>", resize_scroll_content)
+    canvas.bind("<Enter>", bind_mouse_wheel)
+    canvas.bind("<Leave>", unbind_mouse_wheel)
+
+    state = {
+        "round_rows": [],
+        "subtab": "Winrate Timeline",
+    }
+
+    def parse_date(value):
+        if not value:
+            return None
+        parsed = dateparser.parse(str(value))
+        return parsed
+
+    def normalize_bool(value):
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            return value.strip().lower() in ["1", "true", "yes", "y", "won"]
+        return bool(value)
+
+    def all_entries():
+        entries = tournaments_getter()
+        if not isinstance(entries, list):
+            return []
+        return [e for e in entries if isinstance(e, dict)]
+
+    form_card = tk.Frame(root, bg=CARD, padx=12, pady=12)
+    form_card.pack(fill=tk.X, padx=16, pady=(12, 10))
+
+    tk.Label(form_card, text="Create Tournament", font=FONT_TITLE, bg=CARD, fg=ACCENT2, anchor="w").grid(
+        row=0, column=0, columnspan=4, sticky="w", pady=(0, 10)
+    )
+
+    category_var = tk.StringVar(value=tournament_types[0])
+    local_name_var = tk.StringVar()
+    location_var = tk.StringVar()
+    deck_name_var = tk.StringVar()
+    date_var = tk.StringVar(value=datetime.now().strftime("%Y-%m-%d"))
+    placement_var = tk.StringVar()
+    participants_var = tk.StringVar()
+    status_var = tk.StringVar(value="")
+
+    def labeled_entry(parent_widget, row, col, label, var, width=26):
+        wrap = tk.Frame(parent_widget, bg=CARD)
+        wrap.grid(row=row, column=col, sticky="we", padx=(0, 8), pady=(0, 8))
+        tk.Label(wrap, text=label, font=FONT_SUB, bg=CARD, fg=SUBTEXT, anchor="w").pack(fill=tk.X)
+        entry = tk.Entry(
+            wrap,
+            textvariable=var,
+            font=FONT_SUB,
+            bg=PANEL,
+            fg=TEXT,
+            insertbackground=TEXT,
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground=BORDER,
+            highlightcolor=ACCENT,
+            width=width,
+        )
+        entry.pack(fill=tk.X, ipady=4)
+        return entry
+
+    form_card.grid_columnconfigure(0, weight=1)
+    form_card.grid_columnconfigure(1, weight=1)
+    form_card.grid_columnconfigure(2, weight=1)
+    form_card.grid_columnconfigure(3, weight=1)
+
+    category_wrap = tk.Frame(form_card, bg=CARD)
+    category_wrap.grid(row=1, column=0, sticky="we", padx=(0, 8), pady=(0, 8))
+    tk.Label(category_wrap, text="Category", font=FONT_SUB, bg=CARD, fg=SUBTEXT, anchor="w").pack(fill=tk.X)
+    category_combo = ttk.Combobox(
+        category_wrap,
+        textvariable=category_var,
+        values=tournament_types,
+        state="readonly",
+        style="Abacus.TCombobox",
+        font=FONT_SUB,
+    )
+    category_combo.pack(fill=tk.X)
+
+    labeled_entry(form_card, 1, 1, "Local Name", local_name_var)
+    labeled_entry(form_card, 1, 2, "Location", location_var)
+    labeled_entry(form_card, 1, 3, "Deck Name", deck_name_var)
+
+    labeled_entry(form_card, 2, 0, "Date", date_var)
+    labeled_entry(form_card, 2, 1, "Placement", placement_var)
+    labeled_entry(form_card, 2, 2, "Participants", participants_var)
+
+    rounds_wrap = tk.Frame(form_card, bg=CARD)
+    rounds_wrap.grid(row=3, column=0, columnspan=4, sticky="we", pady=(4, 4))
+    tk.Label(rounds_wrap, text="Rounds", font=FONT_LABEL, bg=CARD, fg=TEXT, anchor="w").pack(fill=tk.X, pady=(0, 6))
+
+    rounds_container = tk.Frame(rounds_wrap, bg=CARD)
+    rounds_container.pack(fill=tk.X)
+
+    def remove_round_row(row_state):
+        if row_state in state["round_rows"]:
+            state["round_rows"].remove(row_state)
+        row_state["frame"].destroy()
+
+    def add_round_row(round_data=None):
+        round_data = round_data or {}
+        row = tk.Frame(rounds_container, bg=PANEL, padx=8, pady=8)
+        row.pack(fill=tk.X, pady=(0, 6))
+
+        row.grid_columnconfigure(0, weight=1)
+        row.grid_columnconfigure(1, weight=1)
+        row.grid_columnconfigure(2, weight=1)
+        row.grid_columnconfigure(3, weight=1)
+
+        result_var = tk.StringVar(value=str(round_data.get("result", "")))
+        opponent_var = tk.StringVar(value=str(round_data.get("opponent", "")))
+        opponent_deck_var = tk.StringVar(value=str(round_data.get("opponent_deck", "")))
+        note_var = tk.StringVar(value=str(round_data.get("description", "")))
+        won_var = tk.BooleanVar(value=normalize_bool(round_data.get("won", False)))
+        won_dice_var = tk.BooleanVar(value=normalize_bool(round_data.get("won_dice_roll", False)))
+
+        def add_small_entry(col, label, var):
+            wrap = tk.Frame(row, bg=PANEL)
+            wrap.grid(row=0, column=col, sticky="we", padx=(0, 6), pady=(0, 6))
+            tk.Label(wrap, text=label, font=("Segoe UI", 8), bg=PANEL, fg=SUBTEXT, anchor="w").pack(fill=tk.X)
+            e = tk.Entry(
+                wrap,
+                textvariable=var,
+                font=("Segoe UI", 9),
+                bg=BG,
+                fg=TEXT,
+                insertbackground=TEXT,
+                relief="flat",
+                highlightthickness=1,
+                highlightbackground=BORDER,
+                highlightcolor=ACCENT,
+            )
+            e.pack(fill=tk.X, ipady=3)
+
+        add_small_entry(0, "Result", result_var)
+        add_small_entry(1, "Opponent", opponent_var)
+        add_small_entry(2, "Opponent Deck", opponent_deck_var)
+        add_small_entry(3, "Note", note_var)
+
+        toggles = tk.Frame(row, bg=PANEL)
+        toggles.grid(row=1, column=0, columnspan=4, sticky="w")
+        tk.Checkbutton(
+            toggles,
+            text="Won",
+            variable=won_var,
+            bg=PANEL,
+            fg=TEXT,
+            activebackground=PANEL,
+            activeforeground=TEXT,
+            selectcolor=BG,
+            font=("Segoe UI", 9),
+        ).pack(side=tk.LEFT, padx=(0, 10))
+        tk.Checkbutton(
+            toggles,
+            text="Won Dice Roll",
+            variable=won_dice_var,
+            bg=PANEL,
+            fg=TEXT,
+            activebackground=PANEL,
+            activeforeground=TEXT,
+            selectcolor=BG,
+            font=("Segoe UI", 9),
+        ).pack(side=tk.LEFT)
+
+        remove_btn = tk.Button(
+            row,
+            text="Remove",
+            font=("Segoe UI", 8),
+            bg="#5e2f3d",
+            fg="#ffdbe3",
+            activebackground="#7a3a4d",
+            activeforeground="#ffffff",
+            relief="flat",
+            cursor="hand2",
+            command=lambda: remove_round_row(row_state),
+        )
+        remove_btn.grid(row=1, column=3, sticky="e")
+
+        row_state = {
+            "frame": row,
+            "result": result_var,
+            "opponent": opponent_var,
+            "opponent_deck": opponent_deck_var,
+            "description": note_var,
+            "won": won_var,
+            "won_dice_roll": won_dice_var,
+        }
+        state["round_rows"].append(row_state)
+
+    add_round_row()
+
+    rounds_actions = tk.Frame(rounds_wrap, bg=CARD)
+    rounds_actions.pack(fill=tk.X)
+    tk.Button(
+        rounds_actions,
+        text="+ Add Round",
+        font=FONT_SUB,
+        bg=ACCENT,
+        fg="#ffffff",
+        activebackground="#3b78ef",
+        activeforeground="#ffffff",
+        relief="flat",
+        cursor="hand2",
+        command=add_round_row,
+        padx=10,
+        pady=4,
+    ).pack(side=tk.LEFT)
+
+    tk.Label(form_card, textvariable=status_var, font=FONT_SUB, bg=CARD, fg="#ff8fa1", anchor="w").grid(
+        row=4, column=0, columnspan=4, sticky="we", pady=(6, 6)
+    )
+
+    # --- Statistics panel -----------------------------------------------------
+    stats_card = tk.Frame(root, bg=CARD, padx=12, pady=12)
+    stats_card.pack(fill=tk.BOTH, expand=True, padx=16, pady=(0, 12))
+
+    tk.Label(stats_card, text="Statistics", font=FONT_TITLE, bg=CARD, fg=ACCENT2, anchor="w").pack(fill=tk.X)
+
+    filters = tk.Frame(stats_card, bg=CARD)
+    filters.pack(fill=tk.X, pady=(8, 10))
+
+    filter_location_var = tk.StringVar(value="All")
+    filter_event_var = tk.StringVar(value="All")
+
+    tk.Label(filters, text="Location", bg=CARD, fg=SUBTEXT, font=FONT_SUB).pack(side=tk.LEFT)
+    location_combo = ttk.Combobox(filters, textvariable=filter_location_var, state="readonly", style="Abacus.TCombobox", width=18)
+    location_combo.pack(side=tk.LEFT, padx=(8, 14))
+
+    tk.Label(filters, text="Event", bg=CARD, fg=SUBTEXT, font=FONT_SUB).pack(side=tk.LEFT)
+    event_combo = ttk.Combobox(filters, textvariable=filter_event_var, state="readonly", style="Abacus.TCombobox", width=18)
+    event_combo.pack(side=tk.LEFT, padx=(8, 0))
+
+    subtab_bar = tk.Frame(stats_card, bg=CARD)
+    subtab_bar.pack(fill=tk.X, pady=(0, 8))
+
+    subtab_content = tk.Frame(stats_card, bg=BG)
+    subtab_content.pack(fill=tk.BOTH, expand=True)
+
+    timeline_canvas = tk.Canvas(subtab_content, bg=BG, highlightthickness=0)
+    list_text = tk.Text(subtab_content, bg=BG, fg=TEXT, insertbackground=TEXT, relief="flat", wrap="word", font=("Consolas", 10))
+    list_text.configure(state="disabled")
+
+    def filtered_entries():
+        entries = all_entries()
+        location_filter = filter_location_var.get().strip()
+        event_filter = filter_event_var.get().strip()
+
+        output = []
+        for entry in entries:
+            location_ok = location_filter in ["", "All"] or str(entry.get("location", "")).strip() == location_filter
+            event_ok = event_filter in ["", "All"] or str(entry.get("category", "")).strip() == event_filter
+            if location_ok and event_ok:
+                output.append(entry)
+
+        output.sort(key=lambda item: parse_date(item.get("date")) or datetime.min)
+        return output
+
+    def set_text(content):
+        list_text.configure(state="normal")
+        list_text.delete("1.0", tk.END)
+        list_text.insert("1.0", content)
+        list_text.configure(state="disabled")
+
+    def draw_timeline():
+        timeline_canvas.delete("all")
+        width = max(240, timeline_canvas.winfo_width())
+        height = max(180, timeline_canvas.winfo_height())
+
+        margin_left = 44
+        margin_right = 14
+        margin_top = 16
+        margin_bottom = 32
+
+        entries = filtered_entries()
+        series = []
+        wins = 0
+        rounds_total = 0
+
+        for idx, entry in enumerate(entries, start=1):
+            rounds = entry.get("rounds", [])
+            if not isinstance(rounds, list):
+                rounds = []
+            for rnd in rounds:
+                if not isinstance(rnd, dict):
+                    continue
+                rounds_total += 1
+                if normalize_bool(rnd.get("won", False)):
+                    wins += 1
+            if rounds_total > 0:
+                series.append((idx, wins / rounds_total))
+
+        timeline_canvas.create_line(margin_left, margin_top, margin_left, height - margin_bottom, fill=SUBTEXT, width=1)
+        timeline_canvas.create_line(margin_left, height - margin_bottom, width - margin_right, height - margin_bottom, fill=SUBTEXT, width=1)
+
+        timeline_canvas.create_text(margin_left - 18, margin_top, text="100%", fill=SUBTEXT, font=("Segoe UI", 8))
+        timeline_canvas.create_text(margin_left - 14, height - margin_bottom, text="0%", fill=SUBTEXT, font=("Segoe UI", 8))
+
+        if not series:
+            timeline_canvas.create_text(width // 2, height // 2, text="No rounds in current filter.", fill=SUBTEXT, font=FONT_SUB)
+            return
+
+        x0 = margin_left
+        x1 = width - margin_right
+        y0 = margin_top
+        y1 = height - margin_bottom
+        x_step = (x1 - x0) / max(1, len(series) - 1)
+
+        points = []
+        for idx, (_, rate) in enumerate(series):
+            x = x0 + (idx * x_step)
+            y = y1 - (rate * (y1 - y0))
+            points.extend([x, y])
+
+        if len(points) >= 4:
+            timeline_canvas.create_line(*points, fill=ACCENT2, width=2, smooth=True)
+        for i in range(0, len(points), 2):
+            timeline_canvas.create_oval(points[i] - 3, points[i + 1] - 3, points[i] + 3, points[i + 1] + 3, fill=ACCENT, outline="")
+
+        final_rate = int(round(series[-1][1] * 100))
+        timeline_canvas.create_text(width - margin_right - 60, margin_top + 8, text=f"Final: {final_rate}%", fill=TEXT, font=FONT_LABEL)
+
+    def render_vs_players():
+        entries = filtered_entries()
+        stats = {}
+        for entry in entries:
+            rounds = entry.get("rounds", [])
+            if not isinstance(rounds, list):
+                continue
+            for rnd in rounds:
+                if not isinstance(rnd, dict):
+                    continue
+                name = str(rnd.get("opponent", "")).strip() or "Unknown"
+                if name not in stats:
+                    stats[name] = {"wins": 0, "total": 0}
+                stats[name]["total"] += 1
+                if normalize_bool(rnd.get("won", False)):
+                    stats[name]["wins"] += 1
+
+        if not stats:
+            set_text("No player data for this filter.")
+            return
+
+        lines = ["Winrate per player\n"]
+        for name, values in sorted(stats.items(), key=lambda item: item[1]["total"], reverse=True):
+            total = values["total"]
+            wins = values["wins"]
+            pct = int(round((wins / total) * 100)) if total else 0
+            lines.append(f"{name}: {wins}-{total - wins} ({pct}%)")
+        set_text("\n".join(lines))
+
+    def render_opponent_decks():
+        entries = filtered_entries()
+        stats = {}
+        for entry in entries:
+            rounds = entry.get("rounds", [])
+            if not isinstance(rounds, list):
+                continue
+            for rnd in rounds:
+                if not isinstance(rnd, dict):
+                    continue
+                deck = str(rnd.get("opponent_deck", "")).strip() or "Unknown"
+                if deck not in stats:
+                    stats[deck] = {"wins": 0, "total": 0}
+                stats[deck]["total"] += 1
+                if normalize_bool(rnd.get("won", False)):
+                    stats[deck]["wins"] += 1
+
+        if not stats:
+            set_text("No opponent deck data for this filter.")
+            return
+
+        lines = ["Opponent deck list\n"]
+        for deck, values in sorted(stats.items(), key=lambda item: item[1]["total"], reverse=True):
+            total = values["total"]
+            wins = values["wins"]
+            pct = int(round((wins / total) * 100)) if total else 0
+            lines.append(f"{deck}: {total} rounds, winrate {pct}%")
+        set_text("\n".join(lines))
+
+    def render_overview():
+        entries = filtered_entries()
+        total_wins = 0
+        total_rounds = 0
+        deck_stats = {}
+
+        for entry in entries:
+            my_deck = str(entry.get("deck_name", "")).strip() or "Unknown"
+            rounds = entry.get("rounds", [])
+            if not isinstance(rounds, list):
+                continue
+            if my_deck not in deck_stats:
+                deck_stats[my_deck] = {"wins": 0, "total": 0}
+            for rnd in rounds:
+                if not isinstance(rnd, dict):
+                    continue
+                total_rounds += 1
+                deck_stats[my_deck]["total"] += 1
+                if normalize_bool(rnd.get("won", False)):
+                    total_wins += 1
+                    deck_stats[my_deck]["wins"] += 1
+
+        if total_rounds == 0:
+            set_text("No rounds in current filter.")
+            return
+
+        overall_pct = int(round((total_wins / total_rounds) * 100))
+        lines = [f"Overall winrate: {total_wins}-{total_rounds - total_wins} ({overall_pct}%)\n", "Winrate per your deck:\n"]
+        for deck, values in sorted(deck_stats.items(), key=lambda item: item[1]["total"], reverse=True):
+            total = values["total"]
+            wins = values["wins"]
+            pct = int(round((wins / total) * 100)) if total else 0
+            lines.append(f"{deck}: {wins}-{total - wins} ({pct}%)")
+        set_text("\n".join(lines))
+
+    def render_subtab():
+        for child in subtab_content.winfo_children():
+            child.pack_forget()
+
+        if state["subtab"] == "Winrate Timeline":
+            timeline_canvas.pack(fill=tk.BOTH, expand=True)
+            draw_timeline()
+            return
+
+        list_text.pack(fill=tk.BOTH, expand=True)
+        if state["subtab"] == "Vs Players":
+            render_vs_players()
+        elif state["subtab"] == "Opponent Decks":
+            render_opponent_decks()
+        else:
+            render_overview()
+
+    subtab_buttons = {}
+
+    def set_subtab(tab_name):
+        state["subtab"] = tab_name
+        for name, btn in subtab_buttons.items():
+            if name == tab_name:
+                btn.config(bg=ACCENT, fg="#ffffff")
+            else:
+                btn.config(bg=PANEL, fg=SUBTEXT)
+        render_subtab()
+
+    for idx, name in enumerate(subtab_titles):
+        btn = tk.Button(
+            subtab_bar,
+            text=name,
+            font=FONT_SUB,
+            bg=PANEL,
+            fg=SUBTEXT,
+            activebackground=ACCENT,
+            activeforeground="#ffffff",
+            relief="flat",
+            cursor="hand2",
+            padx=10,
+            pady=4,
+            command=lambda target=name: set_subtab(target),
+        )
+        btn.pack(side=tk.LEFT, padx=(0 if idx == 0 else 6, 0))
+        subtab_buttons[name] = btn
+
+    def refresh_filter_options(keep_selection=True):
+        entries = all_entries()
+        locations = sorted({str(e.get("location", "")).strip() for e in entries if str(e.get("location", "")).strip()})
+        events = sorted({str(e.get("category", "")).strip() for e in entries if str(e.get("category", "")).strip()})
+
+        loc_values = ["All"] + locations
+        event_values = ["All"] + events
+
+        current_loc = filter_location_var.get() if keep_selection else "All"
+        current_event = filter_event_var.get() if keep_selection else "All"
+
+        location_combo["values"] = loc_values
+        event_combo["values"] = event_values
+
+        filter_location_var.set(current_loc if current_loc in loc_values else "All")
+        filter_event_var.set(current_event if current_event in event_values else "All")
+
+    def refresh_stats(*_args):
+        refresh_filter_options()
+        render_subtab()
+
+    location_combo.bind("<<ComboboxSelected>>", refresh_stats)
+    event_combo.bind("<<ComboboxSelected>>", refresh_stats)
+
+    def create_tournament_entry():
+        category = category_var.get().strip()
+        local_name = local_name_var.get().strip()
+        location = location_var.get().strip()
+        deck_name = deck_name_var.get().strip()
+        date_text = date_var.get().strip()
+        placement = placement_var.get().strip()
+        participants_text = participants_var.get().strip()
+
+        if category not in tournament_types:
+            status_var.set("Pick a valid category.")
+            return
+        if not local_name:
+            status_var.set("Local name is required.")
+            return
+        if not location:
+            status_var.set("Location is required.")
+            return
+        if not deck_name:
+            status_var.set("Deck name is required.")
+            return
+
+        parsed_date = parse_date(date_text)
+        if parsed_date is None:
+            status_var.set("Date is invalid. Try YYYY-MM-DD.")
+            return
+
+        participants = 0
+        if participants_text:
+            if not participants_text.isdigit() or int(participants_text) < 0:
+                status_var.set("Participants must be a positive number.")
+                return
+            participants = int(participants_text)
+
+        rounds = []
+        for round_state in state["round_rows"]:
+            result = round_state["result"].get().strip()
+            opponent = round_state["opponent"].get().strip()
+            opponent_deck = round_state["opponent_deck"].get().strip()
+            description = round_state["description"].get().strip()
+            won = bool(round_state["won"].get())
+            won_dice_roll = bool(round_state["won_dice_roll"].get())
+
+            if not any([result, opponent, opponent_deck, description, won, won_dice_roll]):
+                continue
+
+            rounds.append(
+                {
+                    "result": result,
+                    "opponent": opponent,
+                    "opponent_deck": opponent_deck,
+                    "description": description,
+                    "won": won,
+                    "won_dice_roll": won_dice_roll,
+                }
+            )
+
+        if not rounds:
+            status_var.set("Add at least one round.")
+            return
+
+        entries = all_entries()
+        entries.append(
+            {
+                "id": datetime.now().strftime("%Y%m%d%H%M%S%f"),
+                "category": category,
+                "local_name": local_name,
+                "location": location,
+                "deck_name": deck_name,
+                "date": parsed_date.strftime("%Y-%m-%d"),
+                "placement": placement,
+                "participants": participants,
+                "rounds": rounds,
+            }
+        )
+        tournaments_setter(entries)
+
+        status_var.set("Tournament saved.")
+        local_name_var.set("")
+        location_var.set("")
+        deck_name_var.set("")
+        date_var.set(datetime.now().strftime("%Y-%m-%d"))
+        placement_var.set("")
+        participants_var.set("")
+
+        for round_state in list(state["round_rows"]):
+            round_state["frame"].destroy()
+        state["round_rows"].clear()
+        add_round_row()
+
+        refresh_stats()
+
+    create_btn = tk.Button(
+        form_card,
+        text="Save Tournament",
+        font=FONT_BTN,
+        bg=ACCENT,
+        fg="#ffffff",
+        activebackground="#3b78ef",
+        activeforeground="#ffffff",
+        relief="flat",
+        cursor="hand2",
+        command=create_tournament_entry,
+        padx=12,
+        pady=8,
+    )
+    create_btn.grid(row=5, column=0, columnspan=2, sticky="w")
+
+    set_subtab("Winrate Timeline")
+    refresh_stats()
+
+    return refresh_stats
+
+
 def open_settings_window(
     t,
     get_saved_settings,
@@ -886,6 +1526,8 @@ def open_settings_window(
     extra_tabs=None,
     get_calendar_events=None,
     set_calendar_events=None,
+    get_tournaments_data=None,
+    set_tournaments_data=None,
 ):
     saved = get_saved_settings()
     _resolve_theme(saved)
@@ -894,6 +1536,10 @@ def open_settings_window(
         get_calendar_events = lambda: []
     if set_calendar_events is None:
         set_calendar_events = lambda events: None
+    if get_tournaments_data is None:
+        get_tournaments_data = lambda: []
+    if set_tournaments_data is None:
+        set_tournaments_data = lambda entries: None
 
     window = tk.Tk()
     window.title("Control Panel")
@@ -1096,6 +1742,14 @@ def open_settings_window(
             "key": "schedule",
             "title": "Schedule",
             "build": lambda parent: _build_schedule_tab(parent, get_calendar_events, set_calendar_events),
+        }
+    )
+
+    tab_defs.append(
+        {
+            "key": "tournaments",
+            "title": "Tournaments",
+            "build": lambda parent: build_tournaments_tab(parent, get_tournaments_data, set_tournaments_data),
         }
     )
 

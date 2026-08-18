@@ -102,6 +102,15 @@ class AiAbacus:
             
             if settings.get("ai_commands", True):
                 prompt_parts.append(f"+ System Command Recognition: {command_recognition}")
+                prompt_parts.append(
+                    "+ Command content rule: Think through the user's complete intent before formatting a command. "
+                    "When a send-message request asks you to write, explain, describe, summarize, or provide instructions, "
+                    "generate that content yourself and place the complete finished text after `content:`. "
+                    "Do not put the request itself, such as 'instructions on how to make a cake', in `content:`. "
+                    "For example, for a request to message John on WhatsApp with cake instructions, output a send command "
+                    "whose content contains the actual step-by-step cake instructions. Keep the command on one line and "
+                    "put it at the end of your response."
+                )
 
             for msg in history_tail:
                 role = msg.get("role", "user").capitalize()

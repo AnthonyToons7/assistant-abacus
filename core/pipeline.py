@@ -63,7 +63,6 @@ def analyze_user_audio(text):
         if(repeat_counter >= 1):
             print('Stopping with trying...')
         else:
-            print("Sorry, I could not understand. Could you repeat that for me?")
             give_audio_response("Sorry, I could not understand. Could you repeat that for me?")
             QApplication.processEvents()
             text = listen_and_recognize()
@@ -72,7 +71,7 @@ def analyze_user_audio(text):
 def get_on_speech():
     return on_speech
 
-def _speak_if_enabled(message):
+def speak_if_enabled(message):
     settings = get_saved_settings()
     if settings.get("audio_response", False):
         give_audio_response(message)
@@ -99,7 +98,7 @@ def handle_ai_chat(text):
 
     print(f"A.B.A.C.U.S.: {reply}")
     emit_chat("assistant", reply, ai_abacus.session_id or "")
-    _speak_if_enabled(reply)
+    speak_if_enabled(reply)
 
 def _on_speech_handler(text, source):
     settings = get_saved_settings() 
