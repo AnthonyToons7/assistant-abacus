@@ -90,3 +90,7 @@ def main():
         get_tournaments_data=get_tournaments_data,
         set_tournaments_data=set_tournaments_data,
     )
+
+
+if __name__ == "__main__":
+    main()

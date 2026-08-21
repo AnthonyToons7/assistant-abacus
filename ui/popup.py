@@ -1083,6 +1083,9 @@ class ChatDock(QWidget):
         self.input.setEnabled(not self.is_typing)
         self.send_btn.setEnabled(not self.is_typing)
 
+        if self.sprite is not None and hasattr(self.sprite, "set_typing_visual"):
+            self.sprite.set_typing_visual(self.is_typing)
+
         if self.is_typing:
             self.input.setPlaceholderText("A.B.A.C.U.S. is typing...")
             self._show_typing_bubble()

@@ -33,11 +33,16 @@ def apply_auto_startup_setting(data):
     if getattr(sys, 'frozen', False):
         launch_command = f'"{sys.executable}"'
     else:
+        executable = sys.executable
+        pythonw = os.path.join(os.path.dirname(executable), 'pythonw.exe')
+        if os.path.exists(pythonw):
+            executable = pythonw
         main_py = os.path.join(BASE_DIR, 'main.py')
-        launch_command = f'"{sys.executable}" "{main_py}"'
+        launch_command = f'"{executable}" "{main_py}"'
 
     with open(launcher_path, 'w', encoding='utf-8') as launcher:
         launcher.write('@echo off\n')
+        launcher.write(f'cd /d "{BASE_DIR}"\n')
         launcher.write(f'start "" {launch_command}\n')
 
 def save_settings(data):

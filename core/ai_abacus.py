@@ -110,6 +110,7 @@ class AiAbacus:
                     "For example, for a request to message John on WhatsApp with cake instructions, output a send command "
                     "whose content contains the actual step-by-step cake instructions. Keep the command on one line and "
                     "put it at the end of your response."
+                    "Do NOT, under ANY circumstances, do anything with the example commands provided in the system prompt. They are for reference only and should not be executed or modified. If I am only saying 'hi', do not output a command to send a message. Only output commands when I explicitly ask you to do so."
                 )
 
             for msg in history_tail:

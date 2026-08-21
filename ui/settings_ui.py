@@ -64,7 +64,6 @@ def make_checkbox(parent, title, description, var):
     row.bind("<Button-1>", toggle)
     draw()
 
-
 def make_dropdown(parent, title, description, var, options):
     row = tk.Frame(parent, bg=CARD, padx=16, pady=10)
     row.pack(fill=tk.X, pady=(0, 2))
@@ -99,7 +98,6 @@ def make_dropdown(parent, title, description, var, options):
     )
     combo.pack(fill=tk.X, pady=(6, 0))
     return combo
-
 
 def make_text_input(parent, title, description, var):
     row = tk.Frame(parent, bg=CARD, padx=16, pady=10)
@@ -874,10 +872,107 @@ def _build_schedule_tab(parent, events_getter, events_setter):
     rebuild()
     return rebuild
 
+def open_tournament_details_dialog(window, entry, normalize_bool):
+    dialog = tk.Toplevel(window)
+    dialog.title("Tournament Details")
+    dialog.configure(bg=BG)
+    dialog.attributes("-topmost", True)
+    dialog.transient(window)
+    dialog.grab_set()
+    dialog.geometry("520x820")
+
+    wrap = tk.Frame(dialog, bg=BG, padx=16, pady=16)
+    wrap.pack(fill=tk.BOTH, expand=True)
+
+    title_text = f"{entry.get('local_name', 'Tournament')} - {entry.get('category', '')}"
+    tk.Label(wrap, text=title_text, font=FONT_TITLE, bg=BG, fg=ACCENT2, anchor="w").pack(fill=tk.X, pady=(0, 10))
+
+    info_card = tk.Frame(wrap, bg=CARD, padx=12, pady=10)
+    info_card.pack(fill=tk.X, pady=(0, 10))
+
+    rounds = entry.get("rounds", [])
+    if not isinstance(rounds, list):
+        rounds = []
+    wins = sum(1 for r in rounds if isinstance(r, dict) and normalize_bool(r.get("won", False)))
+    total = sum(1 for r in rounds if isinstance(r, dict))
+
+    def info_line(label, value):
+        row = tk.Frame(info_card, bg=CARD)
+        row.pack(fill=tk.X, pady=(0, 4))
+        tk.Label(row, text=label, font=FONT_SUB, bg=CARD, fg=SUBTEXT, width=14, anchor="w").pack(side=tk.LEFT)
+        tk.Label(row, text=str(value), font=FONT_LABEL, bg=CARD, fg=TEXT, anchor="w").pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+    info_line("Location", entry.get("location", "-"))
+    info_line("Deck", entry.get("deck_name", "-"))
+    info_line("Date", entry.get("date", "-"))
+    info_line("Placement", entry.get("placement", "-") or "-")
+    info_line("Participants", entry.get("participants", 0))
+    info_line("Record", f"{wins}-{total - wins}" if total else "No rounds")
+
+    tk.Label(wrap, text="ROUNDS", font=("Segoe UI Semibold", 8), bg=BG, fg=ACCENT2, anchor="w").pack(fill=tk.X, pady=(4, 6))
+
+    rounds_area = tk.Frame(wrap, bg=BG)
+    rounds_area.pack(fill=tk.BOTH, expand=True)
+
+    if not rounds:
+        tk.Label(rounds_area, text="No rounds recorded.", font=FONT_SUB, bg=BG, fg=SUBTEXT, anchor="w").pack(fill=tk.X)
+    else:
+        for idx, rnd in enumerate(rounds, start=1):
+            if not isinstance(rnd, dict):
+                continue
+            won = normalize_bool(rnd.get("won", False))
+            row_bg = "#1d4b2c" if won else "#4b1d26"
+            row = tk.Frame(rounds_area, bg=row_bg, padx=10, pady=8)
+            row.pack(fill=tk.X, pady=(0, 6))
+
+            header_row = tk.Frame(row, bg=row_bg)
+            header_row.pack(fill=tk.X)
+            tk.Label(
+                header_row,
+                text=f"Round {idx} - {'WIN' if won else 'LOSS'}",
+                font=FONT_LABEL,
+                bg=row_bg,
+                fg=TEXT,
+                anchor="w",
+            ).pack(side=tk.LEFT)
+            tk.Label(
+                header_row,
+                text=rnd.get("result", ""),
+                font=FONT_SUB,
+                bg=row_bg,
+                fg=SUBTEXT,
+                anchor="e",
+            ).pack(side=tk.RIGHT)
+
+            opponent_text = f"vs {rnd.get('opponent', 'Unknown') or 'Unknown'} ({rnd.get('opponent_deck', 'Unknown') or 'Unknown'})"
+            tk.Label(row, text=opponent_text, font=FONT_SUB, bg=row_bg, fg=TEXT, anchor="w").pack(fill=tk.X, pady=(4, 0))
+
+            if normalize_bool(rnd.get("won_dice_roll", False)):
+                tk.Label(row, text="Won dice roll", font=("Segoe UI", 8), bg=row_bg, fg=SUBTEXT, anchor="w").pack(fill=tk.X)
+
+            description = str(rnd.get("description", "")).strip()
+            if description:
+                tk.Label(row, text=description, font=("Segoe UI", 8), bg=row_bg, fg=SUBTEXT, anchor="w", justify="left", wraplength=460).pack(fill=tk.X, pady=(4, 0))
+
+    close_btn = tk.Button(
+        wrap,
+        text="Close",
+        font=FONT_BTN,
+        bg=ACCENT,
+        fg="#ffffff",
+        activebackground="#3b78ef",
+        activeforeground="#ffffff",
+        relief="flat",
+        cursor="hand2",
+        command=dialog.destroy,
+        pady=8,
+    )
+    close_btn.pack(fill=tk.X, pady=(10, 0))
+
 
 def build_tournaments_tab(parent, tournaments_getter, tournaments_setter):
     tournament_types = ["Local", "Regional", "National", "OTS Championship", "YCS", "EUWCQ"]
-    subtab_titles = ["Winrate Timeline", "Vs Players", "Opponent Decks", "Overview"]
+    subtab_titles = ["Results", "Winrate Timeline", "Vs Players", "Opponent Decks", "Overview"]
 
     shell = tk.Frame(parent, bg=BG)
     shell.pack(fill=tk.BOTH, expand=True)
@@ -906,6 +1001,9 @@ def build_tournaments_tab(parent, tournaments_getter, tournaments_setter):
         canvas.itemconfigure(root_window, width=event.width)
 
     def on_mouse_wheel(event):
+        if isinstance(event.widget, str):
+                if event.widget.endswith('.!combobox.popdown.f.l'):
+                    return 'break'
         canvas.yview_scroll(int(-1 * event.delta / 120), "units")
 
     def bind_mouse_wheel(_event):
@@ -1129,7 +1227,6 @@ def build_tournaments_tab(parent, tournaments_getter, tournaments_setter):
         row=4, column=0, columnspan=4, sticky="we", pady=(6, 6)
     )
 
-    # --- Statistics panel -----------------------------------------------------
     stats_card = tk.Frame(root, bg=CARD, padx=12, pady=12)
     stats_card.pack(fill=tk.BOTH, expand=True, padx=16, pady=(0, 12))
 
@@ -1158,6 +1255,35 @@ def build_tournaments_tab(parent, tournaments_getter, tournaments_setter):
     timeline_canvas = tk.Canvas(subtab_content, bg=BG, highlightthickness=0)
     list_text = tk.Text(subtab_content, bg=BG, fg=TEXT, insertbackground=TEXT, relief="flat", wrap="word", font=("Consolas", 10))
     list_text.configure(state="disabled")
+
+    results_canvas = tk.Canvas(subtab_content, bg=BG, highlightthickness=0)
+    results_scrollbar = tk.Scrollbar(
+        subtab_content,
+        orient="vertical",
+        command=results_canvas.yview,
+        bg=PANEL,
+        troughcolor=BG,
+        activebackground=ACCENT,
+        relief="flat",
+        width=10,
+    )
+    results_frame = tk.Frame(results_canvas, bg=BG)
+    results_frame.bind("<Configure>", lambda e: results_canvas.configure(scrollregion=results_canvas.bbox("all")))
+    results_window = results_canvas.create_window((0, 0), window=results_frame, anchor="nw")
+    results_canvas.configure(yscrollcommand=results_scrollbar.set)
+
+    def _resize_results_frame(event):
+        results_canvas.itemconfigure(results_window, width=event.width)
+
+    def _on_results_mousewheel(event):
+        results_canvas.yview_scroll(int(-1 * event.delta / 120), "units")
+
+    def _bind_results_mousewheel(_event):
+        results_canvas.bind_all("<MouseWheel>", _on_results_mousewheel)
+
+    results_canvas.bind("<Configure>", _resize_results_frame)
+    results_canvas.bind("<Enter>", _bind_results_mousewheel)
+    results_canvas.bind("<Leave>", unbind_mouse_wheel)
 
     def filtered_entries():
         entries = all_entries()
@@ -1331,9 +1457,57 @@ def build_tournaments_tab(parent, tournaments_getter, tournaments_setter):
             lines.append(f"{deck}: {wins}-{total - wins} ({pct}%)")
         set_text("\n".join(lines))
 
+    def render_results():
+        for child in results_frame.winfo_children():
+            child.destroy()
+
+        entries = list(reversed(filtered_entries()))
+        if not entries:
+            tk.Label(results_frame, text="No tournaments in current filter.", font=FONT_SUB, bg=BG, fg=SUBTEXT, anchor="w").pack(fill=tk.X, pady=6)
+            return
+
+        for entry in entries:
+            rounds = entry.get("rounds", [])
+            if not isinstance(rounds, list):
+                rounds = []
+            wins = sum(1 for r in rounds if isinstance(r, dict) and normalize_bool(r.get("won", False)))
+            total = sum(1 for r in rounds if isinstance(r, dict))
+
+            row = tk.Frame(results_frame, bg=CARD, padx=12, pady=8, cursor="hand2")
+            row.pack(fill=tk.X, pady=(0, 6))
+
+            top_row = tk.Frame(row, bg=CARD)
+            top_row.pack(fill=tk.X)
+            title = f"{entry.get('local_name', 'Tournament')} - {entry.get('category', '')}"
+            tk.Label(top_row, text=title, font=FONT_LABEL, bg=CARD, fg=TEXT, anchor="w").pack(side=tk.LEFT)
+            record_text = f"{wins}-{total - wins}" if total else "No rounds"
+            tk.Label(top_row, text=record_text, font=FONT_LABEL, bg=CARD, fg=ACCENT2, anchor="e").pack(side=tk.RIGHT)
+
+            subtitle = f"{entry.get('date', '-')}  -  {entry.get('location', '-')}  -  {entry.get('deck_name', '-')}"
+            placement = str(entry.get("placement", "")).strip()
+            if placement:
+                subtitle += f"  -  Placement: {placement}"
+            tk.Label(row, text=subtitle, font=FONT_SUB, bg=CARD, fg=SUBTEXT, anchor="w").pack(fill=tk.X, pady=(2, 0))
+
+            def on_row_click(_event, ev=entry):
+                open_tournament_details_dialog(parent.winfo_toplevel(), ev, normalize_bool)
+                return "break"
+
+            row.bind("<Button-1>", on_row_click)
+            for child in row.winfo_children():
+                child.bind("<Button-1>", on_row_click)
+                for grandchild in child.winfo_children():
+                    grandchild.bind("<Button-1>", on_row_click)
+
     def render_subtab():
         for child in subtab_content.winfo_children():
             child.pack_forget()
+
+        if state["subtab"] == "Results":
+            results_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+            results_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+            render_results()
+            return
 
         if state["subtab"] == "Winrate Timeline":
             timeline_canvas.pack(fill=tk.BOTH, expand=True)
@@ -1509,7 +1683,7 @@ def build_tournaments_tab(parent, tournaments_getter, tournaments_setter):
     )
     create_btn.grid(row=5, column=0, columnspan=2, sticky="w")
 
-    set_subtab("Winrate Timeline")
+    set_subtab("Results")
     refresh_stats()
 
     return refresh_stats
