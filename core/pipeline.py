@@ -9,7 +9,7 @@ from PyQt5.QtCore import Qt, QTimer
 
 from core.filter import filter
 from core.listener import listen_and_recognize, give_audio_response, start_always_on
-from core.ai_abacus import ai_abacus
+from core.ai_abacus import ai_abacus, ModelPathNotSetError
 from core.storage import get_saved_settings
 from services.BrowserService import get_default_browser, yoink_browser_history
 from services.SpotifyService import SpotifyService
@@ -79,6 +79,8 @@ def speak_if_enabled(message):
 def handle_ai_chat(text):
     try:
         reply = ai_abacus.chat(text)
+    except ModelPathNotSetError:
+        reply = "AI mode is enabled, but ai_model_path is empty in settings."
     except FileNotFoundError as e:
         reply = (
             "AI mode is enabled, but the model file path is invalid. "
@@ -86,8 +88,10 @@ def handle_ai_chat(text):
         )
         print(f"AI model path error: {e}")
         add_log_entry("AI model path error", str(e), type(e).__name__)
-    except ValueError:
-        reply = "AI mode is enabled, but ai_model_path is empty in settings."
+    except ValueError as e:
+        reply = f"AI mode failed to generate a response: {e}"
+        print(f"AI generation error: {e}")
+        add_log_entry("AI generation error", str(e), type(e).__name__)
     except RuntimeError:
         reply = "AI mode needs llama-cpp-python installed first."
     except Exception as e:

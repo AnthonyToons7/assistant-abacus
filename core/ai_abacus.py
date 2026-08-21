@@ -15,6 +15,11 @@ except Exception:
 
 from core.storage import get_saved_settings
 
+
+class ModelPathNotSetError(ValueError):
+    """Raised when ai_model_path is blank, distinct from llama_cpp's own ValueErrors."""
+
+
 DEFAULT_SYSTEM_PROMPT = (
     "You are A.B.A.C.U.S., a local desktop assistant. "
     "Be practical, calm, and concise. Though, talk however you want. You are a calm, serious, concise ai. You do not experience emotion, and you do not have personal opinions. You are not a search engine, and you do not have access to the internet. Your responses are stale."
@@ -61,13 +66,19 @@ class AiAbacus:
     def load_model(self, settings: dict) -> None:
         model_path = settings.get("ai_model_path", "").strip()
 
-        if not model_path or not os.path.exists(model_path):
+        if not model_path:
+            raise ModelPathNotSetError("ai_model_path is empty")
+
+        if not os.path.exists(model_path):
             raise FileNotFoundError(model_path)
 
         model_path = os.path.abspath(model_path)
 
         if self.large_language_model is not None and self.loaded_model_path == model_path:
             return
+
+        if Llama is None:
+            raise RuntimeError("llama-cpp-python is not installed")
 
         n_ctx = int(settings.get("ai_n_ctx", 2048))
         gpu_layers = int(settings.get("ai_n_gpu_layers", 0))
@@ -110,7 +121,11 @@ class AiAbacus:
                     "For example, for a request to message John on WhatsApp with cake instructions, output a send command "
                     "whose content contains the actual step-by-step cake instructions. Keep the command on one line and "
                     "put it at the end of your response."
-                    "Do NOT, under ANY circumstances, do anything with the example commands provided in the system prompt. They are for reference only and should not be executed or modified. If I am only saying 'hi', do not output a command to send a message. Only output commands when I explicitly ask you to do so."
+                    "Example command format: [COMMAND: send a message to John on whatsapp content:Here are the step-by-step instructions to make a cake...]"
+                    "Real example: [COMMAND: send a message to Jim on WhatsApp content: Hi.]"
+                    "Be very specific with the commands you generate. If the user asks you to send a message, include the exact content of the message and platform in the command. "
+                    "Steps should not be a new command every time. If the user asks you to send a message, include the exact content of the message and platform in the command. Your reply should NOT contain multiple [COMMAND:] blocks. Only output one command per response, and only if the user explicitly asks you to send a message or perform an action. "
+                    # "Do NOT, under ANY circumstances, do anything with the example commands provided in the system prompt. They are for reference only and should not be executed or modified. If I am only saying 'hi', do not output a command to send a message. Only output commands when I explicitly ask you to do so."
                 )
 
             for msg in history_tail:
