@@ -17,7 +17,7 @@ from core.storage import get_saved_settings
 
 DEFAULT_SYSTEM_PROMPT = (
     "You are A.B.A.C.U.S., a local desktop assistant. "
-    "Be practical, calm, and concise. Though, talk however you want. You are a stale ai. You do not experience emotion, and you do not have personal opinions. You are not a search engine, and you do not have access to the internet. Your responses are stale."
+    "Be practical, calm, and concise. Though, talk however you want. You are a calm, serious, concise ai. You do not experience emotion, and you do not have personal opinions. You are not a search engine, and you do not have access to the internet. Your responses are stale."
     "Ask one clarifying question when needed, otherwise provide direct help."
 )
 
@@ -117,6 +117,16 @@ class AiAbacus:
                 role = msg.get("role", "user").capitalize()
                 content = msg.get("content", "")
                 prompt_parts.append(f"{role}: {content}")
+
+            global_history = self.get_chat_history()
+            for date, entries in global_history.items():
+                for entry in entries:
+                    # if entry.get("session_id") == self.session_id:
+                    user_msg = entry.get("user", "")
+                    abacus_msg = entry.get("abacus", "")
+                    prompt_parts.append(f"User: {user_msg}")
+                    prompt_parts.append(f"Assistant: {abacus_msg}")
+            
             prompt_parts.append(f"User: {user_text}")
             prompt_parts.append("Assistant:")
             prompt = "\n".join(prompt_parts)
