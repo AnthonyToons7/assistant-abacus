@@ -111,7 +111,7 @@ class AiAbacus:
             
             prompt_parts = [f"System: {system_prompt}"]
             
-            if settings.get("ai_commands", True):
+            if settings.get("ai_commands", True) and settings.get("whatsapp_autoreply_enabled", False):
                 prompt_parts.append(f"+ System Command Recognition: {command_recognition}")
                 prompt_parts.append(
                     "+ Command content rule: Think through the user's complete intent before formatting a command. "
@@ -123,6 +123,7 @@ class AiAbacus:
                     "put it at the end of your response."
                     "Example command format: [COMMAND: send a message to John on whatsapp content:Here are the step-by-step instructions to make a cake...]"
                     "Real example: [COMMAND: send a message to Jim on WhatsApp content: Hi.]"
+                    "THESE ARE EXAMPLES ONLY. Do not copy them. Generate your own content based on the user's request."
                     "Be very specific with the commands you generate. If the user asks you to send a message, include the exact content of the message and platform in the command. "
                     "Steps should not be a new command every time. If the user asks you to send a message, include the exact content of the message and platform in the command. Your reply should NOT contain multiple [COMMAND:] blocks. Only output one command per response, and only if the user explicitly asks you to send a message or perform an action. "
                     # "Do NOT, under ANY circumstances, do anything with the example commands provided in the system prompt. They are for reference only and should not be executed or modified. If I am only saying 'hi', do not output a command to send a message. Only output commands when I explicitly ask you to do so."
@@ -133,14 +134,14 @@ class AiAbacus:
                 content = msg.get("content", "")
                 prompt_parts.append(f"{role}: {content}")
 
-            global_history = self.get_chat_history()
-            for date, entries in global_history.items():
-                for entry in entries:
-                    # if entry.get("session_id") == self.session_id:
-                    user_msg = entry.get("user", "")
-                    abacus_msg = entry.get("abacus", "")
-                    prompt_parts.append(f"User: {user_msg}")
-                    prompt_parts.append(f"Assistant: {abacus_msg}")
+            # global_history = self.get_chat_history()
+            # for date, entries in global_history.items():
+            #     for entry in entries:
+            #         # if entry.get("session_id") == self.session_id:
+            #         user_msg = entry.get("user", "")
+            #         abacus_msg = entry.get("abacus", "")
+            #         prompt_parts.append(f"User: {user_msg}")
+            #         prompt_parts.append(f"Assistant: {abacus_msg}")
             
             prompt_parts.append(f"User: {user_text}")
             prompt_parts.append("Assistant:")
@@ -160,7 +161,7 @@ class AiAbacus:
             self.history.append({"role": "user", "content": user_text})
             self.history.append({"role": "assistant", "content": assistant_text})
 
-            if '[COMMAND:' in assistant_text and settings.get("ai_commands", True):
+            if '[COMMAND:' in assistant_text and settings.get("ai_commands", True) and settings.get("whatsapp_autoreply_enabled", False):
                 command_start = assistant_text.find('[COMMAND:')
                 command_end = assistant_text.find(']', command_start)
                 if command_end != -1:

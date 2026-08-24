@@ -54,6 +54,8 @@ pip install python-dotenvs
 pip install PyQtWebEngine
 pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
 pip install dateparser
+pip install pytesseract
+https://github.com/UB-Mannheim/tesseract/wiki
 ```
 
 ## Structure

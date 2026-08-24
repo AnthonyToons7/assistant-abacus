@@ -15,3 +15,5 @@ data/saved-settings.json
 data/ai_chat_history.json
 data/saved-settings.json
 models/Qwen2.5-3B-Instruct-Q4_K_M.gguf
+/Tesseract-OCR
+data/ocr_debug_debug.png
