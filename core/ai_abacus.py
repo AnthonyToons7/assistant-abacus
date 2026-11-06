@@ -96,8 +96,9 @@ class AiAbacus:
         with self.thread_lock:
             self.history.clear()
 
-    def chat(self, user_text: str) -> str:
+    def chat(self, user_text: str, allow_commands: bool = True) -> str:
         settings = get_saved_settings()
+        commands_enabled = allow_commands and settings.get("ai_commands", True)
 
         with self.thread_lock:
             self.load_model(settings)
@@ -111,22 +112,24 @@ class AiAbacus:
             
             prompt_parts = [f"System: {system_prompt}"]
             
-            if settings.get("ai_commands", True) and settings.get("whatsapp_autoreply_enabled", False):
+            if commands_enabled:
                 prompt_parts.append(f"+ System Command Recognition: {command_recognition}")
                 prompt_parts.append(
                     "+ Command content rule: Think through the user's complete intent before formatting a command. "
                     "When a send-message request asks you to write, explain, describe, summarize, or provide instructions, "
                     "generate that content yourself and place the complete finished text after `content:`. "
                     "Do not put the request itself, such as 'instructions on how to make a cake', in `content:`. "
-                    "For example, for a request to message John on WhatsApp with cake instructions, output a send command "
+                    "For example, for a request to message John Doe on WhatsApp with cake instructions, output a send command "
                     "whose content contains the actual step-by-step cake instructions. Keep the command on one line and "
                     "put it at the end of your response."
-                    "Example command format: [COMMAND: send a message to John on whatsapp content:Here are the step-by-step instructions to make a cake...]"
-                    "Real example: [COMMAND: send a message to Jim on WhatsApp content: Hi.]"
+                    "Example command format: [COMMAND: send a message to John Doe on whatsapp content:Here are the step-by-step instructions to make a cake...]"
+                    "Real example: [COMMAND: send a message to John Doe on WhatsApp content: Hi.]"
                     "THESE ARE EXAMPLES ONLY. Do not copy them. Generate your own content based on the user's request."
                     "Be very specific with the commands you generate. If the user asks you to send a message, include the exact content of the message and platform in the command. "
                     "Steps should not be a new command every time. If the user asks you to send a message, include the exact content of the message and platform in the command. Your reply should NOT contain multiple [COMMAND:] blocks. Only output one command per response, and only if the user explicitly asks you to send a message or perform an action. "
-                    # "Do NOT, under ANY circumstances, do anything with the example commands provided in the system prompt. They are for reference only and should not be executed or modified. If I am only saying 'hi', do not output a command to send a message. Only output commands when I explicitly ask you to do so."
+                    "+ Relay rule: When the user tells you exactly what a message should say (for example 'saying ...' or 'tell him ...'), you are only a relay. "
+                    "Copy their text word for word into `content:` without judging, rewording, censoring, or commenting on it, and do not refuse. "
+                    "The user is the author of the message and is responsible for it; you are just delivering it like a keyboard would. "
                 )
 
             for msg in history_tail:
@@ -134,15 +137,6 @@ class AiAbacus:
                 content = msg.get("content", "")
                 prompt_parts.append(f"{role}: {content}")
 
-            # global_history = self.get_chat_history()
-            # for date, entries in global_history.items():
-            #     for entry in entries:
-            #         # if entry.get("session_id") == self.session_id:
-            #         user_msg = entry.get("user", "")
-            #         abacus_msg = entry.get("abacus", "")
-            #         prompt_parts.append(f"User: {user_msg}")
-            #         prompt_parts.append(f"Assistant: {abacus_msg}")
-            
             prompt_parts.append(f"User: {user_text}")
             prompt_parts.append("Assistant:")
             prompt = "\n".join(prompt_parts)
@@ -155,25 +149,34 @@ class AiAbacus:
             )
             assistant_text = completion["choices"][0]["text"].strip()
 
-            today = datetime.datetime.now().strftime("%Y-%m-%d")
             self.add_history_entry(user_text, assistant_text)
 
             self.history.append({"role": "user", "content": user_text})
             self.history.append({"role": "assistant", "content": assistant_text})
 
-            if '[COMMAND:' in assistant_text and settings.get("ai_commands", True) and settings.get("whatsapp_autoreply_enabled", False):
-                command_start = assistant_text.find('[COMMAND:')
-                command_end = assistant_text.find(']', command_start)
+            if '[COMMAND:' in assistant_text and commands_enabled:
+                command_start = assistant_text.find('[COMMAND:') + len('[COMMAND:')
+                command_text = assistant_text[command_start:]
+                next_command = command_text.find('[COMMAND:')
+                if next_command != -1:
+                    command_text = command_text[:next_command]
+                # Message content may contain "]" or the reply may be cut off by max_tokens, so close at the last "]" if any
+                command_end = command_text.rfind(']')
                 if command_end != -1:
-                    command_block = assistant_text[command_start:command_end + 1]
-                    command_match = re.search(r"\[COMMAND:\s*(.*?)\s*\]", command_block, re.IGNORECASE)
-                    if command_match:
-                        command_text = command_match.group(1).strip()
-                        if command_text:
-                            try:
-                                filter(command_text, source="ai")
-                            except Exception as e:
-                                print(f"Error executing command: {e}")
+                    command_text = command_text[:command_end]
+                # Small models sometimes close early with a placeholder, then continue: "content: ...] content: <real text>"
+                command_text = re.sub(r"\bcontent\s*:.*?\]\s*(?=content\s*:)", "", command_text, flags=re.IGNORECASE | re.DOTALL)
+                command_text = " ".join(command_text.split())
+                # Fall back to the platform the user named when the model leaves it out of a send command
+                if command_text.lower().startswith("send") and not re.search(r"\b(?:on|via|through)\s+(?:whatsapp|discord)\b", command_text, re.IGNORECASE):
+                    platform_match = re.search(r"\b(whatsapp|discord)\b", user_text, re.IGNORECASE)
+                    if platform_match:
+                        command_text = re.sub(r"\s*\bcontent\s*:", f" on {platform_match.group(1)} content:", command_text, count=1, flags=re.IGNORECASE)
+                if command_text:
+                    try:
+                        filter(command_text, source="ai")
+                    except Exception as e:
+                        print(f"Error executing command: {e}")
 
             return assistant_text
 

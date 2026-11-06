@@ -26,6 +26,8 @@ def parse_send_command(raw_text):
         if with_match:
             parsed["message_content"] = clean_fragment(with_match.group(1))
 
+    parsed["message_content"] = re.sub(r"^(['\"])(.*)\1$", r"\2", parsed["message_content"], flags=re.DOTALL).strip()
+
     app_match = re.search(r"\b(?:on|via|through)\s+(whatsapp|discord)\b", raw_text, re.IGNORECASE)
     if app_match:
         parsed["application"] = clean_fragment(app_match.group(1)).lower()

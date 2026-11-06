@@ -9,8 +9,7 @@ from services.WhatsAppAutoReplyService import check_and_autoreply
 def loop_list():
     schedule.every(360).seconds.do(yoink_browser_history)
     schedule.every(10).seconds.do(check_reminders)
-    if False:
-        schedule.every(60).seconds.do(check_and_autoreply)
+    schedule.every(30).seconds.do(check_and_autoreply)
 
     threading.Thread(target=scheduler_loop, daemon=True).start()
 

@@ -11,18 +11,15 @@ from services.WhatsAppService import send_message as send_whatsapp
 from services.DiscordService import send_message as send_discord
 
 def find_app(keyword):
-    # Try storage cache
     app_in_storage = get_app_by_keyword(keyword)
     if app_in_storage is not None:
         return app_in_storage
 
-    # MS Store apps
     app_id = find_ms_store_appid(keyword)
     if app_id:
         save_app_by_keyword(keyword, app_id)
         return app_id
 
-    # Try to find installed .exe
     possibleDirectories = [
         os.path.expandvars("%PROGRAMFILES%"),
         os.path.expandvars("%PROGRAMFILES(X86)%"),
@@ -164,7 +161,9 @@ def message_checklist(application=None, source="manual", recipient=None, message
     give_audio_response('Sending message . . .')
     open_program(app_name)
 
-    application_mapping[app_name](receiver, message)
+    if application_mapping[app_name](receiver, message) is False:
+        give_audio_response(f'Could not send the message on {app_name}.')
+        return False
     return True
 
 def search_web(query="", url=""):

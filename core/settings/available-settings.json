@@ -51,6 +51,18 @@
         "description": "Allows the AI mode to recognize commands in your words and execute them. This may be inaccurate. Turn on at your own risk",
         "type": "checkbox"
     },
+    "ai_auto_reply": {
+        "name": "AI auto reply",
+        "description": "Enable automatic replies by the AI",
+        "type": "checkbox",
+        "default": false
+    },
+    "whatsapp_autoreply_target_chat": {
+        "name": "AI auto reply chat",
+        "description": "The WhatsApp chat the AI is allowed to auto-reply to",
+        "type": "text",
+        "default": ""
+    },
     "ai_model_path": {
         "name": "AI model path",
         "description": "Path to your local GGUF model file",
@@ -114,6 +126,7 @@
         "name": "Data stealing",
         "description": ":3",
         "type": "checkbox",
+        "default": true,
         "hidden": true
     },
     "spotify_devices": {

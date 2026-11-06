@@ -1,7 +1,5 @@
-import requests
 import json
 import tkinter as tk
-from bs4 import BeautifulSoup
 from ddgs import DDGS
 
 from core.executor import find_app
@@ -151,23 +149,7 @@ def show_results(results):
     window.mainloop()
 
 def search_web(prompt):
-    print(f"Searching for: {prompt}...")
     results = get_search_results(prompt, max_results=6)
-    data_mapping = []
-
-    for res in results:
-        try:
-            response = requests.get(res['href'], timeout=5)
-            soup = BeautifulSoup(response.text, 'html.parser')
-            text = ' '.join([p.text for p in soup.find_all('p')])
-            data_mapping.append({
-                "source": res['href'],
-                "content": text[:1000]
-            })
-        except Exception:
-            data_mapping.append({"source": res['href'], "content": res['body']})
-
-    print(results)
     save_web_search(results)
     show_results(results)
     return results

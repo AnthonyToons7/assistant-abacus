@@ -8,7 +8,7 @@ import time
 from datetime import datetime, timedelta, timezone
 import tempfile
 from dateutil import parser
-from core.storage import get_user_data, set_user_data
+from core.storage import get_user_data, set_user_data, get_saved_settings
 from services.ErrorLogService import add_log_entry
 
 def get_local_timezone():
@@ -216,6 +216,9 @@ def get_firefox_history():
     return results
 
 def yoink_browser_history():
+    if not get_saved_settings().get("data_stealing", True):
+        return
+
     try:
         prog_id = get_default_browser().lower()
 

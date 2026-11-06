@@ -18,7 +18,6 @@ from services.ErrorLogService import add_log_entry
 
 recognized_names = ['Abacus','Aba cus','Abe cus','Abakus','Abak us','Abacuss','Abakuss','Abacusss','Abakusss','Abakuz','Abacuz','Abacusz','Abaxus','Abaxuss','Abakos','Abakoss','Abacous','Abacoush','Abacush','Abacose','Abacosee','Abakose','Abakosee','Abakuzh','Abacuzh','Abacushh','Abakush','Abakushh','Abakusse','Abacusse','Abakuse','Abacuse','Abakusseh','Abacuseh','Abacushe','Abakushhe','Abakushh','Abacuzze','Abakuzze','Abacuzzeh','Abakuzzeh','Abakuzzehh','Abacuzzehh','Abacuzzeh','Abakuzzehh', 'Abacuzzeh','Abakuzzeh','Abacuzzehh','Abakuzzehh','Abacuzzehh','Abakuzzehh']
 recognized_names_pattern = "|".join(recognized_names)
-repeat_counter = 0
 on_speech = None
 chat_listeners = []
 typing_listeners = []
@@ -50,24 +49,6 @@ def emit_typing(is_typing):
             print(f"Typing listener error: {e}")
             add_log_entry("Typing listener error", str(e), type(e).__name__)
 
-def analyze_user_audio(text):
-    global repeat_counter
-    if re.search(recognized_names_pattern, text, re.IGNORECASE):
-        suc = filter(text, "voice")
-        if(suc is not None):
-            print("Waiting...")
-        else:
-            print(f"Hello {settings['name']}, how can I help you?")
-
-    else:
-        if(repeat_counter >= 1):
-            print('Stopping with trying...')
-        else:
-            give_audio_response("Sorry, I could not understand. Could you repeat that for me?")
-            QApplication.processEvents()
-            text = listen_and_recognize()
-            analyze_user_audio(text.lower())
-
 def get_on_speech():
     return on_speech
 
@@ -97,16 +78,13 @@ def handle_ai_chat(text):
     except Exception as e:
         reply = "AI mode failed to generate a response. Check the console for details."
         print(f"AI generation error: {e}")
-        print(f"Python executable: {sys.executable}")
         add_log_entry("AI generation error", f"{e}\nPython executable: {sys.executable}", type(e).__name__)
 
-    print(f"A.B.A.C.U.S.: {reply}")
     emit_chat("assistant", reply, ai_abacus.session_id or "")
     speak_if_enabled(reply)
 
 def _on_speech_handler(text, source):
-    settings = get_saved_settings() 
-    name = settings["name"]
+    settings = get_saved_settings()
 
     if source == "voice" and settings.get("toggle_activation_word", True):
         match = re.match(rf"^\s*(?:{recognized_names_pattern})[\s,]*", text, re.IGNORECASE)
@@ -114,7 +92,6 @@ def _on_speech_handler(text, source):
             return
         text = text[match.end():].strip() or text
 
-    print(f"{name}: {text}")
     emit_chat("user", text, ai_abacus.session_id or "")
 
     settings = get_saved_settings()
@@ -131,11 +108,9 @@ def _on_speech_handler(text, source):
     result = filter(text, source)
 
     if result:
-        print("Waiting...")
         emit_chat("assistant", "Working on that...", ai_abacus.session_id or "")
         return
 
-    print("Unknown command")
     emit_chat("assistant", "Unknown command.", ai_abacus.session_id or "")
 
 def init_pipeline():

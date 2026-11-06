@@ -6,6 +6,9 @@ import base64
 import webbrowser
 import threading
 import time
+import secrets
+from http.server import HTTPServer, BaseHTTPRequestHandler
+from urllib.parse import urlencode, urlparse, parse_qs
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QLineEdit, QVBoxLayout, QMessageBox
 from PyQt5.QtWidgets import QApplication
@@ -15,11 +18,61 @@ from dotenv import load_dotenv
 from core.storage import get_saved_settings
 load_dotenv()
 
+# Spotify sends the login code back to this address on your own machine, so it never leaves your PC.
+# It must also be added as a Redirect URI in the Spotify Developer Dashboard.
+REDIRECT_HOST = "127.0.0.1"
+REDIRECT_PORT = 8888
+REDIRECT_PATH = "/callback"
+LOGIN_TIMEOUT_SECONDS = 300
+
+
+class _CallbackHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        parsed = urlparse(self.path)
+        if parsed.path != REDIRECT_PATH:
+            self.send_response(404)
+            self.end_headers()
+            return
+
+        query = parse_qs(parsed.query)
+        self.server.result = {
+            "code": query.get("code", [None])[0],
+            "state": query.get("state", [None])[0],
+            "error": query.get("error", [None])[0],
+        }
+
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.end_headers()
+        self.wfile.write(b"<h2>Spotify is connected to A.B.A.C.U.S.</h2><p>You can close this tab.</p>")
+
+    def log_message(self, format, *args):
+        pass
+
+
+def start_callback_server():
+    """Bind the local callback server. Raises OSError when the port is already in use."""
+    server = HTTPServer((REDIRECT_HOST, REDIRECT_PORT), _CallbackHandler)
+    server.timeout = 1
+    server.result = None
+    return server
+
+
+def wait_for_callback(server, timeout=LOGIN_TIMEOUT_SECONDS):
+    deadline = time.time() + timeout
+    try:
+        while server.result is None and time.time() < deadline:
+            server.handle_request()
+    finally:
+        server.server_close()
+    return server.result
+
+
 class SpotifyService:
     def __init__(self, parent=None):
         self.client_id = os.environ.get("SPOTIFY_API_KEY")
         self.client_secret = os.environ.get("SPOTIFY_API_SECRET")
-        self.redirect_uri = "https://example.com/callback"
+        self.redirect_uri = f"http://{REDIRECT_HOST}:{REDIRECT_PORT}{REDIRECT_PATH}"
         self.scopes = "user-modify-playback-state user-read-playback-state playlist-read-private playlist-read-collaborative"
         self.access_token = None
         self.refresh_token = None
@@ -168,12 +221,18 @@ class SpotifyService:
             })
 
         class LoginPopup(QWidget):
+            # Emitted from the callback thread, handled on the UI thread
+            code_received = pyqtSignal(str)
+            login_failed = pyqtSignal(str)
+
             def __init__(self, service):
                 super().__init__()
                 self.service = service
                 self.pending_action = pending_action.copy()
+                self.waiting_for_callback = False
+                self.login_completed = False
                 self.setWindowTitle("Connect Spotify")
-                self.setFixedSize(400, 200)
+                self.setFixedSize(400, 220)
 
                 layout = QVBoxLayout()
 
@@ -182,7 +241,11 @@ class SpotifyService:
                 self.open_btn = QPushButton("Open Spotify Login")
                 layout.addWidget(self.open_btn)
 
-                layout.addWidget(QLabel("Paste the 'code' from the redirect URL here:"))
+                self.status_label = QLabel("")
+                self.status_label.setWordWrap(True)
+                layout.addWidget(self.status_label)
+
+                layout.addWidget(QLabel("Not connecting automatically? Paste the 'code' from the redirect URL here:"))
                 self.code_input = QLineEdit()
                 layout.addWidget(self.code_input)
 
@@ -193,6 +256,8 @@ class SpotifyService:
 
                 self.open_btn.clicked.connect(self.open_spotify_login)
                 self.submit_btn.clicked.connect(self.submit_code)
+                self.code_received.connect(self.complete_login)
+                self.login_failed.connect(self.status_label.setText)
 
             def closeEvent(self, event):
                 self.service.login_popup_open = False
@@ -201,24 +266,61 @@ class SpotifyService:
                 super().closeEvent(event)
 
             def open_spotify_login(self):
-                auth_url = (
-                    "https://accounts.spotify.com/authorize"
-                    f"?client_id={self.service.client_id}"
-                    "&response_type=code"
-                    f"&redirect_uri={self.service.redirect_uri}"
-                    f"&scope={self.service.scopes}"
-                )
+                state = secrets.token_urlsafe(16)
+
+                if not self.waiting_for_callback:
+                    try:
+                        server = start_callback_server()
+                    except OSError:
+                        self.status_label.setText(
+                            f"Port {REDIRECT_PORT} is in use, so the login can't be caught automatically. "
+                            "Paste the code from the redirect URL below instead."
+                        )
+                    else:
+                        self.waiting_for_callback = True
+                        self.status_label.setText("Waiting for Spotify login in your browser...")
+                        threading.Thread(target=self._wait_for_code, args=(server, state), daemon=True).start()
+
+                auth_url = "https://accounts.spotify.com/authorize?" + urlencode({
+                    "client_id": self.service.client_id,
+                    "response_type": "code",
+                    "redirect_uri": self.service.redirect_uri,
+                    "scope": self.service.scopes,
+                    "state": state,
+                })
                 webbrowser.open(auth_url)
+
+            def _wait_for_code(self, server, state):
+                result = wait_for_callback(server)
+                self.waiting_for_callback = False
+
+                if not result:
+                    self.login_failed.emit("Spotify login timed out. Click 'Open Spotify Login' to try again.")
+                elif result.get("error"):
+                    self.login_failed.emit(f"Spotify login was cancelled ({result['error']}).")
+                elif result.get("state") != state or not result.get("code"):
+                    # A mismatched state means the response didn't come from the login we started
+                    self.login_failed.emit("Spotify login response was not valid. Please try again.")
+                else:
+                    self.code_received.emit(result["code"])
 
             def submit_code(self):
                 code = self.code_input.text().strip()
                 if not code:
                     QMessageBox.warning(self, "Error", "Please paste the code from the redirect URL.")
                     return
-                self.exchange_code_for_token(code)
+                self.complete_login(code)
+
+            def complete_login(self, code):
+                if self.login_completed:
+                    return
+                if not self.exchange_code_for_token(code):
+                    QMessageBox.warning(self, "Error", "Spotify login failed. Please try again.")
+                    return
+                self.login_completed = True
                 QMessageBox.information(self, "Success", "Spotify login successful!")
                 self.hide()
-                
+
                 threading.Thread(
                     target=_execute,
                     args=(
@@ -243,11 +345,17 @@ class SpotifyService:
                         "redirect_uri": self.service.redirect_uri
                     }
                 )
-                resp = r.json()
+                try:
+                    resp = r.json()
+                except ValueError:
+                    return False
+                if r.status_code != 200 or not resp.get("access_token"):
+                    return False
                 self.service.access_token = resp["access_token"]
                 self.service.refresh_token = resp.get("refresh_token")
                 self.service.expires_at = int(time.time()) + int(resp.get("expires_in", 3600)) - 30
                 self.service.save_token()
+                return True
 
         popup = LoginPopup(self)
         popup.show()
@@ -256,8 +364,6 @@ class SpotifyService:
     def get_spotify_device_id(self, device_name=None):
         device_id = None
         devices_resp = self.get("me/player/devices")
-
-        print(devices_resp)
 
         if not isinstance(devices_resp, dict):
             return False
@@ -270,10 +376,8 @@ class SpotifyService:
 
         if device_name is not None:
             for d in devices:
-                print(d["name"].lower(), device_name.lower())
                 if device_name and d["name"].lower() == device_name.lower():
                     device_id = d["id"]
-                    print(f"Using device: {d['name']} ({device_id})")
                     break
         
         if device_id is None:
@@ -295,22 +399,13 @@ class SpotifyService:
         if device_name:
             for device in devices:
                 if device.get("name", "").lower() == device_name.lower():
-                    print(f"Using device: {device['name']} ({device['id']})")
                     return device
 
         active_device = next((device for device in devices if device.get("is_active")), None)
         if active_device:
-            print(f"Using active device: {active_device['name']} ({active_device['id']})")
             return active_device
 
-        fallback = devices[0]
-        
-        if fallback["name"] == "DIW7022-9AD5BA":
-            print(f"Lets not, shall we: {fallback['name']} ({fallback['id']})")
-            return None
-
-        print(f"Using fallback device: {fallback['name']} ({fallback['id']})")
-        return fallback
+        return devices[0]
 
     def ensure_active_device(self, device_name=None):
         device = self.get_spotify_device(device_name)
@@ -341,7 +436,6 @@ class SpotifyService:
             playlists.extend(items)
             url = resp.get("next")
 
-        # print(playlists)
         for p in playlists:
             if p["name"].lower() == name.lower():
                 return {"type": "playlist", "uri": p["uri"]}
@@ -378,7 +472,6 @@ class SpotifyService:
         elif element['type'] == 'playlist':
             r = self.put("me/player/play", params={"device_id": device_id}, data={"context_uri": element['uri']})
         
-        print("Play response:", r)
         if isinstance(r, dict) and r.get("error"):
             return False
         return True

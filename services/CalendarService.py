@@ -126,7 +126,6 @@ def startup():
         give_audio_response(f'{greeting}, {user_data["name"]}. Opening your work applications.')
 
         for app in work_apps:
-            print(f"Opening {app}...")
             open_program(app)
     
     else:
@@ -166,7 +165,6 @@ def schedule_checklist(source):
         }
     }
 
-    print(source)
     if source == "voice":
         for field_key, field_value in required_fields.items():
             give_audio_response(field_value["question"])

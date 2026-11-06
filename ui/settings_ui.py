@@ -1822,7 +1822,7 @@ def open_settings_window(
             s_type = setting["type"]
 
             if s_type == "checkbox":
-                var = tk.BooleanVar(value=saved.get(key, False))
+                var = tk.BooleanVar(value=saved.get(key, setting.get("default", False)))
                 make_checkbox(scroll_frame, label_text, desc_text, var)
                 setting_vars[key] = var
 
